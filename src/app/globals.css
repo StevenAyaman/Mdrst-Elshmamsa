@@ -1,0 +1,214 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f3efe7;
+  --bg-2: #f9f7f2;
+  --ink: #1a1a1a;
+  --muted: #525252;
+  --accent: #a35b2a;
+  --accent-2: #2f5e4e;
+  --panel: #ffffff;
+  --ring: rgba(163, 91, 42, 0.35);
+  --shadow: 0 20px 60px rgba(18, 14, 6, 0.12);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-heading);
+}
+
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, #efe2d2 0%, transparent 60%),
+    radial-gradient(900px 500px at 110% 10%, #e1efe8 0%, transparent 55%),
+    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-attachment: fixed;
+  color: var(--ink);
+  font-family: "Sakkal Majalla", var(--font-body), system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  min-height: 100vh;
+  direction: rtl;
+}
+
+/* Keep Sakkal text larger while preserving heading sizes. */
+body :where(p, span, label, input, button, textarea, select, li, a) {
+  font-size: inherit;
+}
+
+.app-heading {
+  font-family: "Tajawal", var(--font-heading), system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+  font-size: 1.875rem;
+  font-weight: 400;
+}
+
+.greeting-text {
+  font-family: var(--font-greeting), var(--font-body), system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+  font-size: 36px !important;
+  font-weight: 400;
+}
+
+.back-btn {
+  position: fixed !important;
+  left: 24px !important;
+  top: 56px !important;
+  z-index: 50 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+  text-indent: -9999px !important;
+  overflow: hidden !important;
+}
+
+.back-btn::before {
+  content: "";
+  display: block;
+  width: 22px;
+  height: 22px;
+  background-image: url("/arrow_back_ios_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.back-btn:hover,
+.back-btn:focus,
+.back-btn:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.menu-trigger {
+  position: fixed !important;
+  left: 60px !important;
+  top: 56px !important;
+  z-index: 50 !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.menu-trigger:hover,
+.menu-trigger:focus,
+.menu-trigger:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.site-shell {
+  position: relative;
+  min-height: 100vh;
+}
+
+.site-bg {
+  position: fixed;
+  inset: 0;
+  background-image: url("/background.png");
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.site-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+
+.site-content {
+  position: relative;
+  z-index: 2;
+  min-height: 100vh;
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes menuFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes menuSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes menuSlideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+.menu-backdrop-anim {
+  animation: menuFadeIn 180ms ease-out;
+}
+
+.menu-panel-anim {
+  animation: menuSlideInRight 220ms ease-out;
+}
+
+.menu-backdrop-out-anim {
+  animation: menuFadeOut 180ms ease-out forwards;
+}
+
+.menu-panel-out-anim {
+  animation: menuSlideOutRight 220ms ease-out forwards;
+}
+
+@media (max-width: 768px) {
+  .site-content .max-w-5xl,
+  .site-content .max-w-3xl,
+  .site-content .max-w-xl {
+    max-width: 100% !important;
+  }
+
+  .site-content .px-6 {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+}
