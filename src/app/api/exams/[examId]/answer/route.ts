@@ -105,7 +105,7 @@ export async function POST(
     );
     const isCorrect =
       normalizedSelected.length === normalizedCorrect.length &&
-      normalizedSelected.every((opt) => normalizedCorrect.includes(opt));
+      normalizedSelected.every((opt) => normalizedCorrect.includes(String(opt)));
     answerPayload.selectedOptions = normalizedSelected;
     answerPayload.selectedOption = selectedOption;
     answerPayload.correct = isCorrect;
