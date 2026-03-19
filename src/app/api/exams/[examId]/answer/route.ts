@@ -97,8 +97,12 @@ export async function POST(
       : selectedOption
         ? [selectedOption]
         : [];
-    const normalizedSelected = Array.from(new Set(selectedOptions)).map((opt) => String(opt));
-    const normalizedCorrect = Array.from(new Set(correctOptions)).map((opt) => String(opt));
+    const normalizedSelected: string[] = Array.from(new Set(selectedOptions)).map((opt) =>
+      String(opt),
+    );
+    const normalizedCorrect: string[] = Array.from(new Set(correctOptions)).map((opt) =>
+      String(opt),
+    );
     const isCorrect =
       normalizedSelected.length === normalizedCorrect.length &&
       normalizedSelected.every((opt) => normalizedCorrect.includes(opt));
