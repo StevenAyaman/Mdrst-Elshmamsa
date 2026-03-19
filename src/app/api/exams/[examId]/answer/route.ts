@@ -41,7 +41,7 @@ export async function POST(
   }
 
   const examId = String(resolvedParams.examId ?? "").trim();
-  const payload = await request.json();
+  const payload = (await request.json()) as Record<string, unknown>;
   const questionId = String(payload?.questionId ?? "").trim();
   const questionIndex = Number(payload?.questionIndex ?? 0);
   const autoAdvance = Boolean(payload?.autoAdvance ?? false);
@@ -91,12 +91,14 @@ export async function POST(
   if (type === "mcq") {
     const selectedOption = String(payload?.selectedOption ?? "");
     const selectedOptions = Array.isArray(payload?.selectedOptions)
-      ? payload.selectedOptions.map((o: string) => String(o)).filter(Boolean)
+      ? (payload.selectedOptions as unknown[])
+          .map((o) => String(o))
+          .filter(Boolean)
       : selectedOption
         ? [selectedOption]
         : [];
-    const normalizedSelected = Array.from(new Set(selectedOptions));
-    const normalizedCorrect = Array.from(new Set(correctOptions));
+    const normalizedSelected: string[] = Array.from(new Set(selectedOptions));
+    const normalizedCorrect: string[] = Array.from(new Set(correctOptions));
     const isCorrect =
       normalizedSelected.length === normalizedCorrect.length &&
       normalizedSelected.every((opt) => normalizedCorrect.includes(opt));
