@@ -68,7 +68,10 @@ export async function POST(
     return NextResponse.json({ ok: false, message: "لا توجد محاولة لهذا الطالب." }, { status: 404 });
   }
   const submission = submissionSnap.data() as Record<string, unknown>;
-  const answers = (submission.answers ?? {}) as Record<string, { score?: number; pending?: boolean }>;
+  const answers = (submission.answers ?? {}) as Record<
+    string,
+    { score?: number; pending?: boolean; reviewedAt?: string }
+  >;
   if (!answers[questionId]) {
     return NextResponse.json({ ok: false, message: "الإجابة غير موجودة." }, { status: 404 });
   }
