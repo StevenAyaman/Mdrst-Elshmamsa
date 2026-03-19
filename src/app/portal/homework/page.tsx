@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -226,12 +227,10 @@ export default function HomeworkPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">الواجبات</h1>
-          <Link
-            href={role === "teacher" ? "/portal/teacher" : `/portal/${role || "student"}`}
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            fallbackHref={role === "teacher" ? "/portal/teacher" : `/portal/${role || "student"}`}
+            />
         </header>
 
         {canCreate ? (

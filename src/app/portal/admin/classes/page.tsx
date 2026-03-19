@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useRouter } from "next/navigation";
 
 type ClassItem = {
@@ -106,12 +107,10 @@ export default function ClassesPage() {
           <div>
             <h1 className="app-heading mt-2">قائمة الفصول</h1>
           </div>
-          <Link
-            href="/portal/admin"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/admin"}
+            />
         </header>
 
         {loading ? (

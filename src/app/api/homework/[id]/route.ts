@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { getAdminDb } from "@/lib/firebase/admin";
+import { getActivePeriod } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -77,6 +79,186 @@ function normalizeStringList(value: unknown, upper = false) {
       ? toList(value)
       : [];
   return raw.map((v) => (upper ? normalizeClassId(v) : String(v).trim())).filter(Boolean);
+}
+
+function splitChunks<T>(arr: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function resolveResetAt(db: ReturnType<typeof getAdminDb>, competition: "commitment") {
+  const doc = await db.collection("leaderboard_resets").doc(competition).get();
+  if (!doc.exists) return null;
+  const data = doc.data() as { resetAt?: string };
+  return String(data.resetAt ?? "").trim() || null;
+}
+
+async function resolveParentCodes(db: ReturnType<typeof getAdminDb>, studentCode: string) {
+  const parentCodeSet = new Set<string>();
+  const studentDoc = await db.collection("users").doc(studentCode).get();
+  if (studentDoc.exists) {
+    const student = studentDoc.data() as { parentCodes?: string[] };
+    const directParents = Array.isArray(student.parentCodes)
+      ? student.parentCodes.map((code) => String(code).trim()).filter(Boolean)
+      : [];
+    directParents.forEach((code) => parentCodeSet.add(code));
+  }
+
+  if (!parentCodeSet.size) {
+    const parentSnapshot = await db
+      .collection("users")
+      .where("role", "==", "parent")
+      .where("childrenCodes", "array-contains", studentCode)
+      .get();
+    for (const parentDoc of parentSnapshot.docs) {
+      parentCodeSet.add(parentDoc.id);
+    }
+  }
+
+  return Array.from(parentCodeSet);
+}
+
+async function notifyUsers(
+  db: ReturnType<typeof getAdminDb>,
+  userCodes: string[],
+  title: string,
+  body: string,
+  data: Record<string, string>
+) {
+  if (!userCodes.length) return;
+
+  await db.collection("notifications").add({
+    title,
+    body,
+    createdAt: Timestamp.now(),
+    createdBy: { name: "نظام الليدربورد", code: "system", role: "system" },
+    audience: { type: "users", userCodes },
+    data,
+  });
+
+  const tokenSet = new Set<string>();
+  for (const codesChunk of splitChunks(userCodes, 10)) {
+    const tokensSnapshot = await db
+      .collection("pushTokens")
+      .where("userCode", "in", codesChunk)
+      .get();
+    for (const tokenDoc of tokensSnapshot.docs) {
+      const token = String((tokenDoc.data() as { token?: string }).token ?? "").trim();
+      if (token) tokenSet.add(token);
+    }
+  }
+  const tokens = Array.from(tokenSet);
+  if (!tokens.length) return;
+
+  const messaging = getMessaging();
+  for (const tokenChunk of splitChunks(tokens, 500)) {
+    await messaging.sendEachForMulticast({
+      tokens: tokenChunk,
+      notification: { title, body },
+      data,
+    });
+  }
+}
+
+async function updateCommitmentTop3AndNotify(db: ReturnType<typeof getAdminDb>, classId: string) {
+  const period = await getActivePeriod();
+  if (!period?.term1Start || !period.term1End || !period.term2Start || !period.term2End) return;
+
+  const termStart = period.activeTerm === "term2" ? period.term2Start : period.term1Start;
+  const termEnd = period.activeTerm === "term2" ? period.term2End : period.term1End;
+  const resetAt = await resolveResetAt(db, "commitment");
+  const resetDate = resetAt ? new Date(resetAt) : null;
+
+  const studentsSnap = await db
+    .collection("users")
+    .where("role", "==", "student")
+    .where("classes", "array-contains", classId)
+    .get();
+  const students = studentsSnap.docs
+    .map((doc) => {
+      const data = doc.data() as { code?: string; name?: string };
+      const code = String(data.code ?? doc.id).trim();
+      return { code, name: String(data.name ?? "").trim() };
+    })
+    .filter((item) => item.code);
+
+  if (!students.length) return;
+
+  const studentSet = new Set(students.map((s) => s.code));
+  const nameMap = new Map(students.map((s) => [s.code, s.name]));
+
+  const startTs = Timestamp.fromDate(new Date(`${termStart}T00:00:00.000Z`));
+  const endTs = Timestamp.fromDate(new Date(`${termEnd}T23:59:59.999Z`));
+  const gradesSnap = await db
+    .collection("homeworkGrades")
+    .where("createdAt", ">=", startTs)
+    .where("createdAt", "<=", endTs)
+    .get();
+
+  const stats = new Map<string, { score: number; max: number }>();
+  gradesSnap.docs.forEach((doc) => {
+    const data = doc.data() as { code?: string; score?: number; maxScore?: number; createdAt?: Timestamp };
+    const code = String(data.code ?? "").trim();
+    if (!studentSet.has(code)) return;
+    if (resetDate && data.createdAt?.toDate) {
+      const created = data.createdAt.toDate();
+      if (created < resetDate) return;
+    }
+    const current = stats.get(code) ?? { score: 0, max: 0 };
+    current.score += Number(data.score ?? 0);
+    current.max += Number(data.maxScore ?? 0);
+    stats.set(code, current);
+  });
+
+  const leaderboard = students.map((student) => {
+    const stat = stats.get(student.code) ?? { score: 0, max: 0 };
+    const percent = stat.max > 0 ? Number(((stat.score / stat.max) * 100).toFixed(2)) : 0;
+    return { code: student.code, name: student.name, score: percent };
+  });
+
+  const sorted = leaderboard.sort((a, b) => b.score - a.score);
+  const top3 = sorted.slice(0, 3).map((item) => item.code);
+  const topRef = db.collection("leaderboard_top3").doc(`commitment__${classId}`);
+  const topDoc = await topRef.get();
+  const prevTop3 = topDoc.exists
+    ? (topDoc.data() as { top3Codes?: string[] }).top3Codes ?? []
+    : [];
+
+  const entered = top3.filter((code) => !prevTop3.includes(code));
+  const dropped = prevTop3.filter((code) => !top3.includes(code));
+
+  for (const code of entered) {
+    const rank = top3.indexOf(code) + 1;
+    const name = nameMap.get(code) || code;
+    const parentCodes = await resolveParentCodes(db, code);
+    const targetCodes = Array.from(new Set([code, ...parentCodes]));
+    await notifyUsers(
+      db,
+      targetCodes,
+      "مركز متقدم في الليدربورد",
+      `تهانينا! ${name} وصل للمركز ${rank} في ليدربورد الالتزام.`,
+      { type: "leaderboard_rank_up", competition: "commitment", classId, rank: String(rank) }
+    );
+  }
+
+  for (const code of dropped) {
+    const prevRank = prevTop3.indexOf(code) + 1;
+    const name = nameMap.get(code) || code;
+    const parentCodes = await resolveParentCodes(db, code);
+    const targetCodes = Array.from(new Set([code, ...parentCodes]));
+    await notifyUsers(
+      db,
+      targetCodes,
+      "تغيير في الليدربورد",
+      `تم خروج ${name} من المراكز الثلاثة الأولى في ليدربورد الالتزام.`,
+      { type: "leaderboard_rank_down", competition: "commitment", classId, prevRank: String(prevRank) }
+    );
+  }
+
+  await topRef.set({ top3Codes: top3, updatedAt: new Date().toISOString() }, { merge: true });
 }
 
 async function loadActor(db: ReturnType<typeof getAdminDb>, code: string) {
@@ -327,6 +509,56 @@ export async function POST(
         createdAt: Timestamp.now(),
         createdBy: { code: session.code, name: actor.name ?? "", role },
       });
+
+      try {
+        const studentDoc = await db.collection("users").doc(targetStudentCode).get();
+        const studentData = studentDoc.exists
+          ? (studentDoc.data() as { name?: string; parentCodes?: string[] })
+          : {};
+        const studentName = String(studentData?.name ?? targetStudentCode).trim();
+        const parentCodes = Array.isArray(studentData?.parentCodes)
+          ? studentData.parentCodes.map((code) => String(code).trim()).filter(Boolean)
+          : [];
+        const targetCodes = Array.from(new Set([targetStudentCode, ...parentCodes]));
+
+        if (targetCodes.length) {
+          const notifyTitle = "رسالة واجب جديدة";
+          const notifyBody = `${String(hw.title ?? "واجب")} | ${studentName} | من: ${String(actor.name ?? "المعلم")}`;
+          await db.collection("notifications").add({
+            title: notifyTitle,
+            body: notifyBody,
+            createdAt: Timestamp.now(),
+            createdBy: { name: String(actor.name ?? ""), code: session.code, role },
+            audience: { type: "users", userCodes: targetCodes },
+            data: { type: "homework_message", homeworkId, studentCode: targetStudentCode },
+          });
+
+          const tokenSet = new Set<string>();
+          for (const codesChunk of splitChunks(targetCodes, 10)) {
+            const tokensSnapshot = await db
+              .collection("pushTokens")
+              .where("userCode", "in", codesChunk)
+              .get();
+            for (const tokenDoc of tokensSnapshot.docs) {
+              const token = String((tokenDoc.data() as { token?: string }).token ?? "").trim();
+              if (token) tokenSet.add(token);
+            }
+          }
+          const tokens = Array.from(tokenSet);
+          if (tokens.length) {
+            const messaging = getMessaging();
+            for (const tokenChunk of splitChunks(tokens, 500)) {
+              await messaging.sendEachForMulticast({
+                tokens: tokenChunk,
+                notification: { title: notifyTitle, body: notifyBody },
+                data: { type: "homework_message", homeworkId, studentCode: targetStudentCode },
+              });
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.error("Homework teacher message notification failed:", notifyError);
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -390,6 +622,42 @@ export async function POST(
         createdAt: Timestamp.now(),
         createdBy: { code: session.code, name: actor.name ?? "", role },
       });
+
+      try {
+        const teacherCode = String(hw.createdBy?.code ?? "").trim();
+        if (teacherCode) {
+          const notifyTitle = "تسليم أو رسالة واجب";
+          const notifyBody = `${String(hw.title ?? "واجب")} | ${studentName || studentCode}`;
+          await db.collection("notifications").add({
+            title: notifyTitle,
+            body: notifyBody,
+            createdAt: Timestamp.now(),
+            createdBy: { name: String(studentName || studentCode), code: session.code, role },
+            audience: { type: "users", userCodes: [teacherCode] },
+            data: { type: "homework_message", homeworkId, studentCode },
+          });
+
+          const tokensSnapshot = await db
+            .collection("pushTokens")
+            .where("userCode", "==", teacherCode)
+            .get();
+          const tokens = tokensSnapshot.docs
+            .map((d) => (d.data() as { token?: string }).token)
+            .filter(Boolean) as string[];
+          if (tokens.length) {
+            const messaging = getMessaging();
+            for (const tokenChunk of splitChunks(tokens, 500)) {
+              await messaging.sendEachForMulticast({
+                tokens: tokenChunk,
+                notification: { title: notifyTitle, body: notifyBody },
+                data: { type: "homework_message", homeworkId, studentCode },
+              });
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.error("Homework student message notification failed:", notifyError);
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -469,6 +737,67 @@ export async function PATCH(
         createdByRole: "teacher",
         createdAt: Timestamp.now(),
       });
+
+      try {
+        const studentDoc = await db.collection("users").doc(targetStudent).get();
+        const studentData = studentDoc.exists
+          ? (studentDoc.data() as { name?: string; parentCodes?: string[] })
+          : {};
+        const studentName = String(studentData?.name ?? targetStudent).trim();
+        const parentCodes = Array.isArray(studentData?.parentCodes)
+          ? studentData.parentCodes.map((code) => String(code).trim()).filter(Boolean)
+          : [];
+        const targetCodes = Array.from(new Set([targetStudent, ...parentCodes]));
+        const studentClasses = studentDoc.exists
+          ? Array.isArray((studentDoc.data() as { classes?: string[] }).classes)
+            ? (studentDoc.data() as { classes?: string[] }).classes!.map((c) => String(c).trim()).filter(Boolean)
+            : []
+          : [];
+
+        if (targetCodes.length) {
+          const notifyTitle = "تحديث درجة واجب";
+          const notifyBody = `${String(hw.title ?? "واجب")} | ${studentName} | الدرجة: ${score}/${homeworkMaxScore}`;
+          await db.collection("notifications").add({
+            title: notifyTitle,
+            body: notifyBody,
+            createdAt: Timestamp.now(),
+            createdBy: { name: String(actor.name ?? ""), code: session.code, role },
+            audience: { type: "users", userCodes: targetCodes },
+            data: { type: "homework_grade", homeworkId, studentCode: targetStudent },
+          });
+
+          const tokenSet = new Set<string>();
+          for (const codesChunk of splitChunks(targetCodes, 10)) {
+            const tokensSnapshot = await db
+              .collection("pushTokens")
+              .where("userCode", "in", codesChunk)
+              .get();
+            for (const tokenDoc of tokensSnapshot.docs) {
+              const token = String((tokenDoc.data() as { token?: string }).token ?? "").trim();
+              if (token) tokenSet.add(token);
+            }
+          }
+          const tokens = Array.from(tokenSet);
+          if (tokens.length) {
+            const messaging = getMessaging();
+            for (const tokenChunk of splitChunks(tokens, 500)) {
+              await messaging.sendEachForMulticast({
+                tokens: tokenChunk,
+                notification: { title: notifyTitle, body: notifyBody },
+                data: { type: "homework_grade", homeworkId, studentCode: targetStudent },
+              });
+            }
+          }
+        }
+
+        if (studentClasses.length) {
+          for (const classId of studentClasses) {
+            await updateCommitmentTop3AndNotify(db, classId);
+          }
+        }
+      } catch (notifyError) {
+        console.error("Homework grade notification failed:", notifyError);
+      }
 
       return NextResponse.json({ ok: true });
     }

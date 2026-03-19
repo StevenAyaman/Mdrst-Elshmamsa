@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 
 const libraries = [
   { grade: "1", title: "مكتبة سنة أولى" },
@@ -16,12 +17,10 @@ export default function LibraryIndexPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">المكتبة</h1>
-          <Link
-            href="/portal/admin"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/admin"}
+            />
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

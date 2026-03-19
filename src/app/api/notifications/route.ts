@@ -15,10 +15,11 @@ type NotificationDoc = {
     role: string;
   };
   audience: {
-    type: "all" | "class" | "role";
+    type: "all" | "class" | "role" | "users";
     classId?: string;
     className?: string;
     role?: string;
+    userCodes?: string[];
   };
 };
 
@@ -46,6 +47,14 @@ function decodeSessionFromCookie(request: Request): SessionPayload {
 
 function normalizeRole(role: string) {
   return role === "nzam" ? "system" : role;
+}
+
+function splitChunks<T>(arr: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
 }
 
 async function loadActor(code: string) {
@@ -125,6 +134,12 @@ export async function GET(request: Request) {
         if (item.audience?.type === "role") {
           return item.audience.role === role;
         }
+        if (item.audience?.type === "users") {
+          const targetCodes = Array.isArray(item.audience.userCodes)
+            ? item.audience.userCodes.map((code) => String(code).trim()).filter(Boolean)
+            : [];
+          return targetCodes.includes(session.code);
+        }
         if (item.audience?.type === "all") return true;
         if (item.audience?.type === "class") {
           const targetClass = item.audience.classId ?? "";
@@ -170,10 +185,21 @@ export async function POST(request: Request) {
     const code = String(session.code ?? "").trim();
     const role = normalizeRole(String(actor.role ?? session.role ?? "").trim().toLowerCase());
     const audience = body.audience ?? { type: "all" };
-    const audienceType = audience?.type === "class" ? "class" : "all";
+    const audienceType =
+      audience?.type === "class"
+        ? "class"
+        : audience?.type === "users"
+          ? "users"
+          : "all";
     const classId = audienceType === "class" ? String(audience.classId ?? "").trim() : undefined;
     const className =
       audienceType === "class" ? String(audience.className ?? "").trim() : undefined;
+    const userCodes =
+      audienceType === "users"
+        ? Array.isArray(audience.userCodes)
+          ? audience.userCodes.map((code: string) => String(code).trim()).filter(Boolean)
+          : []
+        : [];
 
     if (!title || !content || !name || !code || !role) {
       return NextResponse.json(
@@ -199,6 +225,12 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    if (audienceType === "users" && !userCodes.length) {
+      return NextResponse.json(
+        { ok: false, message: "User codes are required for users audience." },
+        { status: 400 }
+      );
+    }
     if (audienceType === "class" && role !== "admin" && role !== "notes") {
       const allowedClasses = await getAllowedClassesForUser(role, actor);
       if (!allowedClasses.includes(classId!)) {
@@ -215,6 +247,8 @@ export async function POST(request: Request) {
       audience:
         audienceType === "class"
           ? { type: "class", classId: classId!, className: className || classId! }
+          : audienceType === "users"
+            ? { type: "users", userCodes }
           : { type: "all" },
     };
 
@@ -223,14 +257,34 @@ export async function POST(request: Request) {
     const doc = saved.data() as NotificationDoc;
 
     // Push notifications
-    const tokenQuery =
-      audienceType === "class" && classId
-        ? db.collection("pushTokens").where("classIds", "array-contains", classId)
-        : db.collection("pushTokens");
-    const tokensSnapshot = await tokenQuery.get();
-    const tokens = tokensSnapshot.docs
-      .map((d) => (d.data() as { token?: string }).token)
-      .filter(Boolean) as string[];
+    let tokens: string[] = [];
+    if (audienceType === "class" && classId) {
+      const tokensSnapshot = await db
+        .collection("pushTokens")
+        .where("classIds", "array-contains", classId)
+        .get();
+      tokens = tokensSnapshot.docs
+        .map((d) => (d.data() as { token?: string }).token)
+        .filter(Boolean) as string[];
+    } else if (audienceType === "users" && userCodes.length) {
+      const tokenSet = new Set<string>();
+      for (const codesChunk of splitChunks(userCodes, 10)) {
+        const tokensSnapshot = await db
+          .collection("pushTokens")
+          .where("userCode", "in", codesChunk)
+          .get();
+        for (const doc of tokensSnapshot.docs) {
+          const token = String((doc.data() as { token?: string }).token ?? "").trim();
+          if (token) tokenSet.add(token);
+        }
+      }
+      tokens = Array.from(tokenSet);
+    } else {
+      const tokensSnapshot = await db.collection("pushTokens").get();
+      tokens = tokensSnapshot.docs
+        .map((d) => (d.data() as { token?: string }).token)
+        .filter(Boolean) as string[];
+    }
 
     if (tokens.length) {
       try {

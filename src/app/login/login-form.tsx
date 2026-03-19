@@ -68,10 +68,10 @@ export default function LoginForm() {
 
   return (
     <form className="grid gap-4" onSubmit={handleSubmit}>
-      <label className="grid gap-2 text-right text-sm text-white">
+      <label className="grid gap-2 text-right text-sm font-medium text-white/90">
         كود المستخدم
         <input
-          className="rounded-2xl border border-white/30 bg-white/15 px-4 py-3 text-right text-white outline-none transition focus:border-white/60 focus:ring-2 focus:ring-white/30"
+          className="w-full rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-lg font-semibold text-white placeholder:text-white/50"
           type="text"
           value={form.studentCode}
           onChange={(event) => handleChange("studentCode", event.target.value)}
@@ -79,10 +79,10 @@ export default function LoginForm() {
           required
         />
       </label>
-      <label className="grid gap-2 text-right text-sm text-white">
+      <label className="grid gap-2 text-right text-sm font-medium text-white/90">
         كلمة المرور
         <input
-          className="rounded-2xl border border-white/30 bg-white/15 px-4 py-3 text-right text-white outline-none transition focus:border-white/60 focus:ring-2 focus:ring-white/30"
+          className="w-full rounded-2xl border border-white/20 bg-white/10 px-5 py-4 text-lg font-semibold text-white placeholder:text-white/50"
           type="password"
           value={form.password}
           onChange={(event) => handleChange("password", event.target.value)}
@@ -100,7 +100,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={submitting}
-        className="rounded-full bg-[color:var(--accent-2)] px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+        className="btn mt-2 w-full rounded-2xl bg-gradient-to-r from-[color:var(--accent)] to-[color:var(--accent-2)] px-6 py-3.5 text-base font-bold text-[#030811] shadow-[var(--shadow-glow)] transition-all hover:shadow-[0_0_20px_rgba(226,183,110,0.5)] active:scale-95 disabled:opacity-70 disabled:pointer-events-none"
       >
         {submitting ? "جار الدخول..." : "تسجيل الدخول"}
       </button>

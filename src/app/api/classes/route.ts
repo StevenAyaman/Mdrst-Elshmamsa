@@ -31,10 +31,6 @@ function normalizeClassId(value: string) {
 
 export async function GET(request: Request) {
   try {
-    const session = decodeSessionFromCookie(request);
-    if (!session?.code || !session?.role) {
-      return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
-    }
     const db = getAdminDb();
     const snapshot = await db.collection("classes").orderBy("name", "asc").get();
     const data = snapshot.docs.map((doc) => {

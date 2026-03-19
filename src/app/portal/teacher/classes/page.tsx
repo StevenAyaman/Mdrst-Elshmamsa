@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect } from "react";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -79,12 +80,10 @@ export default function TeacherClassesEntryPage() {
       <section className="mx-auto w-full max-w-5xl">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="app-heading mt-2">الفصول</h1>
-          <Link
-            href="/portal/teacher"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/teacher"}
+            />
         </header>
 
         {loading ? <p className="text-sm text-white/80">جار التحميل...</p> : null}

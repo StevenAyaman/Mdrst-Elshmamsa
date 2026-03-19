@@ -82,8 +82,8 @@ export async function GET(
     const url = new URL(request.url);
     const periodId = String(url.searchParams.get("periodId") ?? "").trim();
 
-    if (!actorCode || !actorRole || !classId || !periodId) {
-      return NextResponse.json({ ok: false, message: "Missing class or period." }, { status: 400 });
+    if (!actorCode || !actorRole || !classId) {
+      return NextResponse.json({ ok: false, message: "Missing class." }, { status: 400 });
     }
 
     const canExport = await canExportForClass(actorCode, actorRole, classId);
@@ -92,9 +92,22 @@ export async function GET(
     }
 
     const db = getAdminDb();
-    const periodDoc = await db.collection("service_periods").doc(periodId).get();
-    if (!periodDoc.exists) {
-      return NextResponse.json({ ok: false, message: "الفترة غير موجودة." }, { status: 404 });
+    let periodDoc: FirebaseFirestore.DocumentSnapshot;
+    if (periodId) {
+      periodDoc = await db.collection("service_periods").doc(periodId).get();
+      if (!periodDoc.exists) {
+        return NextResponse.json({ ok: false, message: "الفترة غير موجودة." }, { status: 404 });
+      }
+    } else {
+      const activeSnap = await db
+        .collection("service_periods")
+        .where("active", "==", true)
+        .limit(1)
+        .get();
+      if (activeSnap.empty) {
+        return NextResponse.json({ ok: false, message: "لا توجد فترة فعالة حالياً." }, { status: 400 });
+      }
+      periodDoc = activeSnap.docs[0];
     }
     const periodData = periodDoc.data() as { name?: string; startDate?: string; endDate?: string };
     const periodName = String(periodData.name ?? "").trim();

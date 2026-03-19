@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -61,7 +62,6 @@ export default function AttendancePage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [periods, setPeriods] = useState<PeriodItem[]>([]);
-  const [periodId, setPeriodId] = useState("");
   const [date, setDate] = useState("");
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [attendance, setAttendance] = useState<AttendanceMap>({});
@@ -76,6 +76,7 @@ export default function AttendancePage() {
   const [scannedStudent, setScannedStudent] = useState<StudentProfile | null>(null);
   const [scannedPhoto, setScannedPhoto] = useState<string>("");
   const scannerRef = useRef<{ stop: () => Promise<void> } | null>(null);
+  const scannerRunningRef = useRef(false);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("dsms:user");
@@ -170,9 +171,7 @@ export default function AttendancePage() {
         }
         const loadedPeriods = periodsJson.data as PeriodItem[];
         setPeriods(loadedPeriods);
-        if (loadedPeriods.length) {
-          setPeriodId(loadedPeriods[0].id);
-        } else {
+        if (!loadedPeriods.length) {
           setError("لا توجد فترة خدمة مفعلة حالياً.");
         }
       } catch {
@@ -209,7 +208,10 @@ export default function AttendancePage() {
           { fps: 10, qrbox: { width: 240, height: 240 } },
           async (decodedText: string) => {
             try {
-              await instance.stop();
+              if (scannerRunningRef.current) {
+                scannerRunningRef.current = false;
+                await instance.stop();
+              }
             } catch {
               // ignore
             }
@@ -219,16 +221,20 @@ export default function AttendancePage() {
           },
           () => undefined
         );
+        scannerRunningRef.current = true;
       } catch {
+        scannerRunningRef.current = false;
+        scannerRef.current = null;
         setScanError("تعذر تشغيل الكاميرا.");
       }
     }
     startScanner();
     return () => {
-      if (scannerRef.current) {
+      if (scannerRef.current && scannerRunningRef.current) {
+        scannerRunningRef.current = false;
         scannerRef.current.stop().catch(() => undefined);
-        scannerRef.current = null;
       }
+      scannerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scannerOpen]);
@@ -270,10 +276,10 @@ export default function AttendancePage() {
   }, [scannedStudent]);
 
   const availableDates = useMemo(() => {
-    const period = periods.find((item) => item.id === periodId);
+    const period = periods[0];
     if (!period || !myClassId) return [];
     return generateClassDates(period.startDate, period.endDate, myClassId);
-  }, [periodId, periods, myClassId]);
+  }, [periods, myClassId]);
 
   useEffect(() => {
     if (!availableDates.length) {
@@ -321,7 +327,7 @@ export default function AttendancePage() {
       }
     }
     loadAttendanceForDate();
-  }, [date, me?.studentCode, me?.role]);
+  }, [date, me?.studentCode, me?.role, myClassId]);
 
   function setStatus(code: string, status: "present" | "absent") {
     setAttendance((prev) => ({ ...prev, [code]: status }));
@@ -434,22 +440,20 @@ export default function AttendancePage() {
   }
 
   return (
-    <main className="min-h-screen px-6 pb-24 pt-10">
+    <main className="attendance-page min-h-screen px-6 pb-24 pt-10">
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">الغياب والحضور</h1>
-          <Link
-            href={
+          <BackButton
+            className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
+            fallbackHref={
               me?.role === "admin"
                 ? "/portal/admin"
                 : me?.role === "teacher"
                   ? "/portal/teacher"
                   : "/portal/system"
             }
-            className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            />
         </header>
 
         <section className="rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
@@ -476,21 +480,6 @@ export default function AttendancePage() {
               )}
 
               <div className="grid gap-3 sm:grid-cols-2">
-                <select
-                  className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white"
-                  value={periodId}
-                  onChange={(e) => setPeriodId(e.target.value)}
-                >
-                  <option value="" className="text-black">
-                    اختر الفترة
-                  </option>
-                  {periods.map((period) => (
-                    <option key={period.id} value={period.id} className="text-black">
-                      {period.name} ({period.startDate} - {period.endDate})
-                    </option>
-                  ))}
-                </select>
-
                 <select
                   className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white"
                   value={date}
@@ -643,13 +632,9 @@ export default function AttendancePage() {
               </div>
 
               <a
-                href={
-                  myClassId && periodId
-                    ? `/api/classes/${myClassId}/attendance-export?periodId=${encodeURIComponent(periodId)}`
-                    : "#"
-                }
+                href={myClassId ? `/api/classes/${myClassId}/attendance-export` : "#"}
                 className={`w-fit rounded-full px-5 py-2 text-sm font-semibold ${
-                  myClassId && periodId
+                  myClassId
                     ? "border border-white/25 bg-white/10 text-white"
                     : "pointer-events-none border border-white/15 bg-white/5 text-white/60"
                 }`}

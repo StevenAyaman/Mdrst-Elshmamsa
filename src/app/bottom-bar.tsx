@@ -52,40 +52,40 @@ export default function BottomBar() {
         {
           id: "competition",
           label: "المسابقات",
-          icon: "/competition.png",
+          icon: "/katamars.png",
           href: "/portal/competitions",
         },
-        { id: "home", label: "الرئيسية", icon: "/home.png", href: roleHome },
+        { id: "home", label: "الرئيسية", icon: "/home_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.png", href: roleHome },
         {
           id: "classes",
           label: "الفصول",
-          icon: "/classes.png",
+          icon: "/Class.png",
           href: "/portal/admin/classes",
         },
-        { id: "library", label: "المكتبة", icon: "/library.png", href: "/portal/admin/library" },
+        { id: "library", label: "المكتبة", icon: "/Mktba.png", href: "/portal/admin/library" },
       ];
     }
     if (effectiveRole === "system") {
       return [
         { id: "complaints", label: "السلوك", icon: "/Shkawi.png", href: "/portal/complaints" },
-        { id: "role-tool", label: "الحضور", icon: "/attendance-docs.png", href: "/portal/attendance" },
-        { id: "photos", label: "الصور", icon: "/Photos.png", href: "/portal/photos" },
-        { id: "class", label: "الفصل", icon: "/classes.png", href: "/portal/system/class" },
-        { id: "library", label: "المكتبة", icon: "/library.png", href: "/portal/library" },
+        { id: "role-tool", label: "الحضور", icon: "/7dor.png", href: "/portal/attendance" },
+        { id: "photos", label: "الصور", icon: "/Photos1.png", href: "/portal/photos" },
+        { id: "class", label: "الفصل", icon: "/Class.png", href: "/portal/system/class" },
+        { id: "library", label: "المكتبة", icon: "/Mktba.png", href: "/portal/library" },
       ];
     }
     if (effectiveRole === "teacher") {
       return [
-        { id: "role-tool", label: "الواجبات", icon: "/administration.png", href: "/portal/homework" },
-        { id: "notifications", label: "التنبيهات", icon: "/competition.png", href: "/portal/notifications" },
-        { id: "home", label: "الرئيسية", icon: "/home.png", href: roleHome },
-        { id: "library", label: "المكتبة", icon: "/library.png", href: "/portal/library" },
+        { id: "role-tool", label: "الواجبات", icon: "/homework.png", href: "/portal/homework" },
+        { id: "notifications", label: "التنبيهات", icon: "/NotificationW.png", href: "/portal/notifications" },
+        { id: "home", label: "الرئيسية", icon: "/home_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.png", href: roleHome },
+        { id: "library", label: "المكتبة", icon: "/Mktba.png", href: "/portal/library" },
       ];
     }
     return [
-      { id: "notifications", label: "مسابقة القطمارس", icon: "/Mosbka.png", href: "/portal/notifications" },
-      { id: "home", label: "الرئيسية", icon: "/home.png", href: roleHome },
-      { id: "library", label: "المكتبة", icon: "/library.png", href: "/portal/library" },
+      { id: "notifications", label: "مسابقة القطمارس", icon: "/katamars.png", href: "/portal/notifications" },
+      { id: "home", label: "الرئيسية", icon: "/home_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.png", href: roleHome },
+      { id: "library", label: "المكتبة", icon: "/Mktba.png", href: "/portal/library" },
     ];
   }, [pathname, role]);
 

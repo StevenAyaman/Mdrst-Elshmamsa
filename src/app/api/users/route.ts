@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import { mapRole } from "@/lib/code-mapper";
 import { getAdminDb } from "@/lib/firebase/admin";
 import { hashPassword } from "@/lib/password";
@@ -48,6 +49,41 @@ function normalizeSubjects(value: unknown) {
   return Array.from(unique);
 }
 
+function splitChunks<T>(arr: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function notifyAdmins(title: string, body: string, data: Record<string, string> = {}) {
+  const db = getAdminDb();
+  await db.collection("notifications").add({
+    title,
+    body,
+    createdAt: Timestamp.now(),
+    createdBy: { name: "نظام الحسابات", code: "system", role: "system" },
+    audience: { type: "role", role: "admin" },
+    data,
+  });
+
+  const tokensSnap = await db.collection("pushTokens").where("role", "==", "admin").get();
+  const tokens = tokensSnap.docs
+    .map((doc) => (doc.data() as { token?: string }).token)
+    .filter(Boolean) as string[];
+
+  if (!tokens.length) return;
+  const messaging = getMessaging();
+  for (const chunk of splitChunks(tokens, 500)) {
+    await messaging.sendEachForMulticast({
+      tokens: chunk,
+      notification: { title, body },
+      data,
+    });
+  }
+}
+
 async function verifyAdminActor(actorCode: string, actorRole: string) {
   if (actorRole !== "admin") return false;
   const db = getAdminDb();
@@ -55,10 +91,6 @@ async function verifyAdminActor(actorCode: string, actorRole: string) {
   if (!doc.exists) return false;
   const data = doc.data() as { role?: string };
   return String(data.role ?? "").trim().toLowerCase() === "admin";
-}
-
-function normalizeArabicName(value: string) {
-  return value.replace(/\s+/g, " ").trim().toLowerCase();
 }
 
 function decodeSessionFromCookie(request: Request) {
@@ -266,7 +298,7 @@ export async function POST(request: Request) {
     }
 
     let classes = requestedClasses;
-    if (mappedRole === "admin" || mappedRole === "notes") {
+    if (mappedRole === "admin" || mappedRole === "notes" || mappedRole === "katamars") {
       classes = [];
     } else if (mappedRole === "parent") {
       classes = [];
@@ -340,6 +372,14 @@ export async function POST(request: Request) {
           parentCodes: FieldValue.arrayUnion(code),
         });
       }
+    }
+
+    try {
+      const title = "تم إضافة حساب جديد";
+      const bodyText = `تم إنشاء حساب جديد باسم ${name} (${mappedRole}) بواسطة ${actorCode}.`;
+      await notifyAdmins(title, bodyText, { type: "account_created", code });
+    } catch (notifyError) {
+      console.error("Create user notification failed:", notifyError);
     }
 
     return NextResponse.json({

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import QRCode from "qrcode"
@@ -18,6 +19,8 @@ type StudentFile = {
   ordinationChurch?: string;
   ordainedBy?: string;
   lastServiceDate?: string;
+  civilId?: string;
+  civilCardPhoto?: string;
   profilePhoto?: string;
   attendance: {
     present: number;
@@ -33,6 +36,13 @@ type StudentFile = {
     createdByRole: string;
     createdAt: string;
   }>;
+  katamarsGrades?: Array<{
+    id: string;
+    month: string;
+    classId: string;
+    score: number;
+    updatedAt: string;
+  }>;
 };
 
 export default function StudentFilePage() {
@@ -45,6 +55,8 @@ export default function StudentFilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [photoSaving, setPhotoSaving] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("dsms:user");
@@ -55,7 +67,7 @@ export default function StudentFilePage() {
     try {
       const user = JSON.parse(stored) as { role?: string };
       const role = user.role === "nzam" ? "system" : user.role;
-      if (role !== "admin" && role !== "system" && role !== "teacher") {
+      if (role !== "admin" && role !== "system" && role !== "teacher" && role !== "katamars") {
         router.replace(`/portal/${role ?? "student"}`);
         return;
       }
@@ -71,6 +83,12 @@ export default function StudentFilePage() {
           storedClassId
             ? `/portal/teacher/classes/${encodeURIComponent(storedClassId)}`
             : "/portal/teacher/classes"
+        );
+      } else if (role === "katamars") {
+        setBackHref(
+          storedClassId
+            ? `/portal/katamars/classes/${encodeURIComponent(storedClassId)}`
+            : "/portal/katamars/classes"
         );
       } else {
         setBackHref("/portal/admin/classes");
@@ -102,6 +120,42 @@ export default function StudentFilePage() {
     load();
   }, [code]);
 
+  async function updateStudentPhoto(file: File | null) {
+    if (!file || !code) return;
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("الملف لازم يكون صورة.");
+      return;
+    }
+    setPhotoError(null);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const result = String(reader.result ?? "");
+      if (!result.startsWith("data:image/")) {
+        setPhotoError("تعذر قراءة الصورة.");
+        return;
+      }
+      try {
+        setPhotoSaving(true);
+        const res = await fetch(`/api/students/${code}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profilePhoto: result }),
+        });
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          setPhotoError(json?.message || "فشل تحديث الصورة.");
+          return;
+        }
+        setData((prev) => (prev ? { ...prev, profilePhoto: result } : prev));
+      } catch {
+        setPhotoError("فشل تحديث الصورة.");
+      } finally {
+        setPhotoSaving(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
   useEffect(() => {
     async function makeQr() {
       if (!code) return;
@@ -120,12 +174,10 @@ export default function StudentFilePage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">ملف الطالب</h1>
-          <Link
-            href={backHref}
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            fallbackHref={backHref}
+            />
         </header>
 
         {loading ? <p className="text-sm text-white/80">جار التحميل...</p> : null}
@@ -155,6 +207,7 @@ export default function StudentFilePage() {
                         <p>تاريخ آخر خدمة: {data.lastServiceDate || "-"}</p>
                       </>
                     ) : null}
+                    <p>الرقم المدني للشماس: {data.civilId || "-"}</p>
                   </div>
                 </div>
                 <div className="mt-2 flex shrink-0 items-start justify-start">
@@ -171,6 +224,28 @@ export default function StudentFilePage() {
                   </div>
                 </div>
               </div>
+              <div className="mt-3">
+                <label className="text-sm text-white/85">تحديث صورة الطالب</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="mt-2 block w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-2 text-sm text-white file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-black"
+                  onChange={(e) => updateStudentPhoto(e.target.files?.[0] ?? null)}
+                  disabled={photoSaving}
+                />
+                {photoSaving ? <p className="mt-2 text-xs text-white/75">جار الحفظ...</p> : null}
+                {photoError ? <p className="mt-2 text-xs text-red-200">{photoError}</p> : null}
+              </div>
+              {data.civilCardPhoto ? (
+                <div className="mt-4 rounded-2xl border border-white/20 bg-white/10 p-3">
+                  <p className="text-sm font-semibold">صورة المدنية (هويتي)</p>
+                  <img
+                    src={data.civilCardPhoto}
+                    alt="صورة المدنية"
+                    className="mt-2 h-40 w-full rounded-xl object-contain bg-black/10"
+                  />
+                </div>
+              ) : null}
               <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-white/20 bg-white/10 p-4">
                 <p className="text-sm font-semibold">QR كود الطالب</p>
                 {qrDataUrl ? (
@@ -241,6 +316,36 @@ export default function StudentFilePage() {
                           <td className="px-3 py-2">{g.subject || "-"}</td>
                           <td className="px-3 py-2">{g.score} / {g.maxScore}</td>
                           <td className="px-3 py-2">{g.createdByRole || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+            <section className="rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
+              <p className="text-lg font-semibold">درجات مسابقة القطمارس</p>
+              {!data.katamarsGrades?.length ? (
+                <p className="mt-3 text-sm text-white/80">لا توجد درجات مسابقة القطمارس حالياً.</p>
+              ) : (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full min-w-[560px] text-right text-sm text-white">
+                    <thead>
+                      <tr className="border-b border-white/20 text-white/85">
+                        <th className="px-3 py-2">الشهر القبطي</th>
+                        <th className="px-3 py-2">الفصل</th>
+                        <th className="px-3 py-2">الدرجة</th>
+                        <th className="px-3 py-2">آخر تحديث</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.katamarsGrades.map((grade) => (
+                        <tr key={grade.id} className="border-b border-white/10">
+                          <td className="px-3 py-2">{grade.month || "-"}</td>
+                          <td className="px-3 py-2">{grade.classId || "-"}</td>
+                          <td className="px-3 py-2">{grade.score}</td>
+                          <td className="px-3 py-2">{grade.updatedAt || "-"}</td>
                         </tr>
                       ))}
                     </tbody>

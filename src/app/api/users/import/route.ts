@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { FieldValue } from "firebase-admin/firestore";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import * as xlsx from "xlsx";
 import { mapRole } from "@/lib/code-mapper";
 import { getAdminDb } from "@/lib/firebase/admin";
@@ -73,6 +74,41 @@ function isSessionActorMatch(request: Request, actorCode: string, actorRole: str
   const normalizedRole = session.role === "nzam" ? "system" : session.role;
   const requestedRole = actorRole === "nzam" ? "system" : actorRole;
   return session.code === actorCode && normalizedRole === requestedRole;
+}
+
+function splitChunks<T>(arr: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function notifyAdmins(title: string, body: string, data: Record<string, string> = {}) {
+  const db = getAdminDb();
+  await db.collection("notifications").add({
+    title,
+    body,
+    createdAt: Timestamp.now(),
+    createdBy: { name: "نظام الحسابات", code: "system", role: "system" },
+    audience: { type: "role", role: "admin" },
+    data,
+  });
+
+  const tokensSnap = await db.collection("pushTokens").where("role", "==", "admin").get();
+  const tokens = tokensSnap.docs
+    .map((doc) => (doc.data() as { token?: string }).token)
+    .filter(Boolean) as string[];
+  if (!tokens.length) return;
+
+  const messaging = getMessaging();
+  for (const chunk of splitChunks(tokens, 500)) {
+    await messaging.sendEachForMulticast({
+      tokens: chunk,
+      notification: { title, body },
+      data,
+    });
+  }
 }
 
 async function generateUniqueCode(localReserved: Set<string>) {
@@ -197,7 +233,7 @@ export async function POST(request: Request) {
 
       let classes = parseList(classesRaw);
       const subjects = parseList(subjectsRaw).filter((value) => ALLOWED_SUBJECTS.has(value));
-      if (mappedRole === "admin" || mappedRole === "notes") {
+      if (mappedRole === "admin" || mappedRole === "notes" || mappedRole === "katamars") {
         classes = [];
       } else if (mappedRole === "parent") {
         classes = [];
@@ -270,6 +306,16 @@ export async function POST(request: Request) {
         }
       }
       createdCodes.push(code);
+    }
+
+    try {
+      if (createdCodes.length) {
+        const title = "تم استيراد حسابات جديدة";
+        const bodyText = `تم استيراد ${createdCodes.length} حساب جديد عبر ملف Excel.`;
+        await notifyAdmins(title, bodyText, { type: "accounts_import" });
+      }
+    } catch (notifyError) {
+      console.error("Import users notification failed:", notifyError);
     }
 
     return NextResponse.json({

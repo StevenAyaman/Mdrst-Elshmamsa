@@ -5,7 +5,8 @@ export type UserRole =
   | "parent"
   | "student"
   | "nzam"
-  | "notes";
+  | "notes"
+  | "katamars";
 
 export type SystemUser = {
   id: string;

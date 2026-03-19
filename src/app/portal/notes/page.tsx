@@ -6,6 +6,14 @@ import { useRouter } from "next/navigation";
 
 type StoredUser = { role?: string; name?: string };
 
+const toShortName = (value?: string) => {
+  const parts = String(value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.slice(0, 2).join(" ") || "الخادم";
+};
+
 export default function NotesHomePage() {
   const router = useRouter();
   const [alerts, setAlerts] = useState<
@@ -23,7 +31,7 @@ export default function NotesHomePage() {
       const stored = window.localStorage.getItem("dsms:user");
       if (!stored) return "الخادم";
       const user = JSON.parse(stored) as StoredUser;
-      return user.name || "الخادم";
+      return toShortName(user.name);
     } catch {
       return "الخادم";
     }
@@ -107,7 +115,9 @@ export default function NotesHomePage() {
         <div className="mt-6 flex justify-center">
           <div className="grid w-full max-w-xs gap-4 sm:max-w-sm">
           {[
-            { href: "/portal/inquiries", label: "الاستفسارات والشكاوي", icon: "/QuestionW.png" },
+          { href: "/portal/inquiries", label: "الاستفسارات والشكاوي", icon: "/QuestionW.png" },
+          { href: "/portal/leaderboard", label: "لوحة المتصدرين", icon: "/Mosbka.png" },
+          { href: "/portal/calendar", label: "التقويم", icon: "/Calender.png" },
           ].map((item) => (
             <Link
               key={item.href}

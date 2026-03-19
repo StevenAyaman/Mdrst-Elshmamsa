@@ -70,20 +70,31 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       const msg = await messaging;
       if (!msg) return;
 
-      const token = await getToken(msg, {
-        vapidKey:
-          "BJuh9aGUeXOlIJV-UGzAwTvedlyCecYCvYtavkPTVlNtgxbUk9_9ShLiGOjHuE0Km3OMQGw9XolVVcwEe5R0XP8",
-        serviceWorkerRegistration: reg ?? undefined,
-      });
+      let token = "";
+      try {
+        token =
+          (await getToken(msg, {
+            vapidKey:
+              "BJuh9aGUeXOlIJV-UGzAwTvedlyCecYCvYtavkPTVlNtgxbUk9_9ShLiGOjHuE0Km3OMQGw9XolVVcwEe5R0XP8",
+            serviceWorkerRegistration: reg ?? undefined,
+          })) ?? "";
+      } catch {
+        // Skip push registration silently if token service fails.
+        return;
+      }
 
       if (!token) return;
       const storedUser = window.localStorage.getItem("dsms:user");
       const userCode = storedUser ? (JSON.parse(storedUser).studentCode ?? "") : "";
-      await fetch("/api/push/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, userCode }),
-      });
+      try {
+        await fetch("/api/push/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, userCode }),
+        });
+      } catch {
+        return;
+      }
 
       window.localStorage.setItem("dsms:push", "done");
     }
@@ -146,7 +157,13 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 px-5">
           <div className="w-full max-w-sm rounded-2xl border border-white/20 bg-white p-4 text-right shadow-xl">
             <div className="mb-3 flex items-center justify-between">
-              <img src="/Mdrstna.png" alt="Mdrstna" className="h-10 w-10 rounded-lg object-cover" />
+              <img
+                src="/Mdrstna.png"
+                alt="Mdrstna"
+                loading="lazy"
+                decoding="async"
+                className="h-10 w-10 rounded-lg object-cover"
+              />
               <p className="text-sm font-semibold text-black">إضافة للتشغيل من الشاشة الرئيسية</p>
             </div>
             <p className="text-xs text-black/70">

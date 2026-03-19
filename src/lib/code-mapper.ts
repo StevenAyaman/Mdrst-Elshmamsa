@@ -18,6 +18,7 @@ export function mapRole(rawRole: unknown): UserRole | null {
   if (["nzam", "نزام", "نطام"].includes(role)) return "nzam";
   if (["teacher", "مدرس"].includes(role)) return "teacher";
   if (["notes", "ملاحظات", "تنبيهات"].includes(role)) return "notes";
+  if (["katamars", "qatmaros", "qatmars", "قطمارس"].includes(role)) return "katamars";
   if (["parent", "ولي امر", "ولي أمر", "وليالامر"].includes(role)) return "parent";
   if (["student", "طالب"].includes(role)) return "student";
 

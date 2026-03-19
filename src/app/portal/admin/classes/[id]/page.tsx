@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useParams, useRouter } from "next/navigation";
 
 type PersonItem = {
@@ -108,12 +109,10 @@ export default function ClassDetailsPage() {
             <h1 className="app-heading">{classNames[classId] ?? ""}</h1>
           </div>
           <div className="flex justify-end">
-            <Link
-              href="/portal/admin/classes"
+            <BackButton
               className="back-btn ml-0 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              رجوع
-            </Link>
+              fallbackHref={"/portal/admin/classes"}
+            />
           </div>
         </header>
 

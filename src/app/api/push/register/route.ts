@@ -59,15 +59,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = userDoc.data() as { role?: string; classes?: string[] };
+    const user = userDoc.data() as { role?: string; classes?: string[]; childrenCodes?: string[] };
     const role = String(user.role ?? "").trim();
-    const classes = Array.isArray(user.classes) ? user.classes : [];
+    const classes = new Set<string>(Array.isArray(user.classes) ? user.classes : []);
+
+    // Parent accounts may not have direct classes; derive classes from childrenCodes
+    // so notifications/reports for any child class reach the parent token.
+    if (String(role).toLowerCase() === "parent") {
+      const childrenCodes = Array.isArray(user.childrenCodes)
+        ? user.childrenCodes.map((value) => String(value).trim()).filter(Boolean)
+        : [];
+      for (const childCode of childrenCodes) {
+        const childDoc = await db.collection("users").doc(childCode).get();
+        if (!childDoc.exists) continue;
+        const child = childDoc.data() as { classes?: string[] };
+        const childClasses = Array.isArray(child.classes) ? child.classes : [];
+        childClasses
+          .map((value) => String(value).trim())
+          .filter(Boolean)
+          .forEach((value) => classes.add(value));
+      }
+    }
 
     await db.collection("pushTokens").doc(token).set({
       token,
       userCode,
       role,
-      classIds: classes,
+      classIds: Array.from(classes),
       updatedAt: Timestamp.now(),
       session,
     });

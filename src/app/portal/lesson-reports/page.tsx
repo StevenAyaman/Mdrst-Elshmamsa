@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -353,12 +354,10 @@ export default function LessonReportsPage() {
       <section className="mx-auto w-full max-w-5xl">
         <header className="mb-6 flex items-center justify-between">
           <h1 className="app-heading mt-2">تقارير الحصص</h1>
-          <Link
-            href={backHref}
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            fallbackHref={backHref}
+            />
         </header>
 
         {canCreate ? (

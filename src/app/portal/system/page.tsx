@@ -6,9 +6,30 @@ import { useRouter } from "next/navigation";
 
 type StoredUser = { role?: string; name?: string; classes?: string[] };
 
+const toShortName = (value?: string) => {
+  const parts = String(value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.slice(0, 2).join(" ") || "الخادم";
+};
+
 export default function SystemHomePage() {
   const router = useRouter();
-  const [currentClass, setCurrentClass] = useState<string | null>(null);
+  const [currentClass] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const stored = window.localStorage.getItem("dsms:user");
+      if (!stored) return null;
+      const user = JSON.parse(stored) as StoredUser;
+      const classes = Array.isArray(user.classes)
+        ? user.classes.map((c) => String(c).trim()).filter(Boolean)
+        : [];
+      return classes[0] ?? null;
+    } catch {
+      return null;
+    }
+  });
   const [latestAlert, setLatestAlert] = useState<{
     title: string;
     body: string;
@@ -20,9 +41,7 @@ export default function SystemHomePage() {
       const stored = window.localStorage.getItem("dsms:user");
       if (!stored) return "الخادم";
       const user = JSON.parse(stored) as StoredUser;
-      const classes = Array.isArray(user.classes) ? user.classes.map((c) => String(c).trim()).filter(Boolean) : [];
-      setCurrentClass(classes[0] ?? null);
-      return user.name || "الخادم";
+      return toShortName(user.name);
     } catch {
       return "الخادم";
     }
@@ -100,11 +119,13 @@ export default function SystemHomePage() {
         </section>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {[
-            { href: "/portal/photos", label: "الصور", icon: "/Photos1.png" },
-            { href: "/portal/system/class", label: "الفصل", icon: "/Class.png" },
+          { href: "/portal/photos", label: "الصور", icon: "/Photos1.png" },
+          { href: "/portal/leaderboard", label: "لوحة المتصدرين", icon: "/Mosbka.png" },
+          { href: "/portal/system/class", label: "الفصل", icon: "/Class.png" },
             { href: "/portal/library", label: "المكتبة", icon: "/Mktba.png" },
+            { href: "/portal/calendar", label: "التقويم", icon: "/Calender.png" },
             { href: "/portal/attendance", label: "الغياب والحضور", icon: "/7dor.png" },
-            { href: "/portal/competitions", label: "مسابقة القطمارس", icon: "/Mosbka.png" },
+            { href: "/portal/competitions", label: "مسابقة القطمارس", icon: "/katamars.png" },
             { href: "/portal/complaints", label: "السلوك", icon: "/Shkawi.png" },
           ].map((item) => (
             <Link

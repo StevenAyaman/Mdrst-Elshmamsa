@@ -45,6 +45,10 @@ function normalizeRememberedDate(value: unknown) {
   return "";
 }
 
+function isValidCivilId(value: string) {
+  return /^\d{12}$/.test(value);
+}
+
 export async function GET(request: Request) {
   try {
     const session = decodeSessionFromCookie(request);
@@ -69,6 +73,8 @@ export async function GET(request: Request) {
       ordinationChurch?: string;
       ordainedBy?: string;
       lastServiceDate?: string;
+      civilId?: string;
+      civilCardPhoto?: string;
       classes?: string[];
     };
     const classId = Array.isArray(data.classes) && data.classes.length ? String(data.classes[0] ?? "") : "";
@@ -86,6 +92,8 @@ export async function GET(request: Request) {
         ordinationChurch: String(data.ordinationChurch ?? ""),
         ordainedBy: String(data.ordainedBy ?? ""),
         lastServiceDate: String(data.lastServiceDate ?? ""),
+        civilId: String(data.civilId ?? ""),
+        civilCardPhoto: String(data.civilCardPhoto ?? ""),
         isGirlsClass,
         requiresService: !isGirlsClass,
         requiresExtraFields: isBoysClass,
@@ -119,6 +127,8 @@ export async function PATCH(request: Request) {
       ordinationChurch?: string;
       ordainedBy?: string;
       lastServiceDate?: string;
+      civilId?: string;
+      civilCardPhoto?: string;
     };
     const preferredServiceInput = String(body.preferredService ?? "").trim();
     const preferredMass = String(body.preferredMass ?? "").trim();
@@ -128,6 +138,8 @@ export async function PATCH(request: Request) {
     const ordinationChurch = String(body.ordinationChurch ?? "").trim();
     const ordainedBy = String(body.ordainedBy ?? "").trim();
     const lastServiceDate = normalizeRememberedDate(body.lastServiceDate);
+    const civilId = String(body.civilId ?? "").trim();
+    const civilCardPhoto = String(body.civilCardPhoto ?? "").trim();
 
     const db = getAdminDb();
     const userDoc = await db.collection("users").doc(code).get();
@@ -153,7 +165,9 @@ export async function PATCH(request: Request) {
           !ordinationDate ||
           !ordinationChurch ||
           !ordainedBy ||
-          !lastServiceDate))
+          !lastServiceDate)) ||
+      !isValidCivilId(civilId) ||
+      !civilCardPhoto.startsWith("data:image/")
     ) {
       return NextResponse.json(
         { ok: false, message: "من فضلك أكمل بيانات الخدمة المفضلة بشكل صحيح." },
@@ -169,6 +183,8 @@ export async function PATCH(request: Request) {
       ordinationChurch: isBoysClass ? ordinationChurch : "",
       ordainedBy: isBoysClass ? ordainedBy : "",
       lastServiceDate: isBoysClass ? lastServiceDate : "",
+      civilId,
+      civilCardPhoto,
       updatedAt: new Date().toISOString(),
     });
 
@@ -183,6 +199,8 @@ export async function PATCH(request: Request) {
         ordinationChurch,
         ordainedBy,
         lastServiceDate,
+        civilId,
+        civilCardPhoto,
       },
     });
     const sessionPayload = Buffer.from(

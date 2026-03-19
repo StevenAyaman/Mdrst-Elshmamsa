@@ -1,10 +1,9 @@
-/* eslint-disable no-undef */
 try {
   importScripts("https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js");
   importScripts(
     "https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js"
   );
-} catch (err) {
+} catch {
   // If Firebase scripts fail to load, skip push handling to avoid SW crash.
 }
 

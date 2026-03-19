@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import BackButton from "@/app/back-button";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 type StoredUser = { role?: string; studentCode?: string; name?: string };
@@ -130,7 +131,7 @@ export default function HomeworkDetailPage() {
     loadParentChildren();
   }, [role, user?.studentCode, selectedStudent]);
 
-  async function loadDetail(studentCodeParam?: string) {
+  const loadDetail = useCallback(async (studentCodeParam?: string) => {
     if (!homeworkId) {
       setError("واجب غير صالح.");
       setLoading(false);
@@ -155,7 +156,7 @@ export default function HomeworkDetailPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [homeworkId]);
 
   useEffect(() => {
     if (!role) return;
@@ -173,7 +174,7 @@ export default function HomeworkDetailPage() {
       return;
     }
     loadDetail();
-  }, [role, selectedStudent, homeworkId]);
+  }, [role, selectedStudent, loadDetail]);
 
   useEffect(() => {
     if (role !== "student" && role !== "parent") return;
@@ -186,7 +187,7 @@ export default function HomeworkDetailPage() {
       }
     }, 15000);
     return () => window.clearInterval(timer);
-  }, [role, selectedStudent, homeworkId]);
+  }, [role, selectedStudent, loadDetail]);
 
   async function submitMessage(payload: { text?: string; upload?: File | null }) {
     if (!homeworkId) return false;
@@ -497,12 +498,10 @@ export default function HomeworkDetailPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">تفاصيل الواجب</h1>
-          <Link
-            href="/portal/homework"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/homework"}
+            />
         </header>
 
         {loading ? <p className="text-sm text-white/70">جار التحميل...</p> : null}

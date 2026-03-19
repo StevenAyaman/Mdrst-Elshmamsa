@@ -8,6 +8,7 @@ export const accessCodes: Record<UserRole, string> = {
   student: "5555",
   nzam: "3333",
   notes: "6666",
+  katamars: "7777",
 };
 
 export const roleLabels: Record<UserRole, string> = {
@@ -18,4 +19,5 @@ export const roleLabels: Record<UserRole, string> = {
   student: "طالب",
   nzam: "نظام",
   notes: "ملاحظات",
+  katamars: "قطمارس",
 };

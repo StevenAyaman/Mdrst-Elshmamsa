@@ -99,7 +99,36 @@ export async function GET(request: Request) {
         .filter((item) => !item.deletedBy.includes(actorCode))
         .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 
-      return NextResponse.json({ ok: true, data });
+      const classesSnapshot = await db.collection("classes").get();
+      const classes = classesSnapshot.docs.map((doc) => doc.id).sort((a, b) => a.localeCompare(b, "en"));
+      const studentsByClass = new Map<string, Array<{ code: string; name: string }>>();
+      for (const classId of classes) {
+        const classStudents = await db
+          .collection("users")
+          .where("role", "==", "student")
+          .where("classes", "array-contains", classId)
+          .limit(500)
+          .get();
+        const list = classStudents.docs
+          .map((doc) => {
+            const item = doc.data() as { code?: string; name?: string };
+            return {
+              code: String(item.code ?? doc.id),
+              name: String(item.name ?? ""),
+            };
+          })
+          .sort((a, b) => a.name.localeCompare(b.name, "ar"));
+        studentsByClass.set(classId, list);
+      }
+
+      return NextResponse.json({
+        ok: true,
+        data,
+        meta: {
+          classes,
+          studentsByClass: Object.fromEntries(studentsByClass),
+        },
+      });
     }
 
     const mySnapshot = await db
@@ -173,7 +202,7 @@ export async function POST(request: Request) {
     if (!actorCode || !actorRole) {
       return NextResponse.json({ ok: false, message: "Unauthorized." }, { status: 401 });
     }
-    if (!["system", "teacher"].includes(actorRole)) {
+    if (!["system", "teacher", "admin"].includes(actorRole)) {
       return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
     }
 
@@ -213,18 +242,19 @@ export async function POST(request: Request) {
       ? student.classes.map((c) => String(c).trim()).filter(Boolean)
       : [];
     const sharedClass = studentClasses.find((c) => actor.classes.includes(c));
-    if (!sharedClass) {
+    if (!sharedClass && actorRole !== "admin") {
       return NextResponse.json(
         { ok: false, message: "لا يمكنك تقديم شكوى لطالب خارج فصولك." },
         { status: 403 }
       );
     }
+    const targetClass = sharedClass || studentClasses[0] || "";
 
     const now = new Date().toISOString();
     const ref = await db.collection("complaints").add({
       studentCode,
       studentName: String(student.name ?? ""),
-      classId: sharedClass,
+      classId: targetClass,
       message,
       createdByCode: actor.code,
       createdByName: actor.name,
@@ -255,7 +285,7 @@ export async function POST(request: Request) {
       console.error("Complaint notification doc failed:", notifyError);
     }
 
-    // Notify parent accounts about the complaint.
+    // Notify student + parent accounts about the complaint.
     try {
       const parentCodeSet = new Set(
         Array.isArray(student.parentCodes)
@@ -275,10 +305,12 @@ export async function POST(request: Request) {
         }
       }
 
-      const parentCodes = Array.from(parentCodeSet);
-      if (parentCodes.length) {
+      const targetCodeSet = new Set<string>([studentCode]);
+      parentCodeSet.forEach((code) => targetCodeSet.add(code));
+      const targetCodes = Array.from(targetCodeSet);
+      if (targetCodes.length) {
         const tokenSet = new Set<string>();
-        for (const codesChunk of splitChunks(parentCodes, 10)) {
+        for (const codesChunk of splitChunks(targetCodes, 10)) {
           const tokensSnapshot = await db
             .collection("pushTokens")
             .where("userCode", "in", codesChunk)
@@ -302,7 +334,7 @@ export async function POST(request: Request) {
                 type: "complaint",
                 complaintId: ref.id,
                 studentCode,
-                classId: sharedClass,
+                classId: targetClass,
               },
             });
           }

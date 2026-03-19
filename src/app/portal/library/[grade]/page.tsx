@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useParams } from "next/navigation";
 
 const gradeLabels: Record<string, string> = {
@@ -30,12 +31,10 @@ export default function LibraryGradePage() {
           <div>
             <h1 className="app-heading mt-2">{label}</h1>
           </div>
-          <Link
-            href="/portal/library"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/library"}
+            />
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

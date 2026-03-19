@@ -1,15 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f3efe7;
-  --bg-2: #f9f7f2;
-  --ink: #1a1a1a;
-  --muted: #525252;
-  --accent: #a35b2a;
-  --accent-2: #2f5e4e;
-  --panel: #ffffff;
-  --ring: rgba(163, 91, 42, 0.35);
-  --shadow: 0 20px 60px rgba(18, 14, 6, 0.12);
+  /* Richer deeper Navy tones */
+  --bg: #030811;
+  --bg-2: #071224;
+  --ink: #f8fafc;
+  --muted: #b4c2d6;
+  
+  /* Vibrant, luxurious Gold and Teal */
+  --accent: #e2b76e;
+  --accent-glow: #ffcf78;
+  --accent-2: #34b3d1;
+  
+  /* Advanced glassmorphism variables */
+  --glass-bg: rgba(9, 20, 38, 0.65);
+  --glass-border: rgba(226, 183, 110, 0.4);
+  --glass-highlight: rgba(255, 255, 255, 0.08);
+  
+  --panel: rgba(5, 12, 25, 0.85);
+  --ring: rgba(226, 183, 110, 0.5);
+  --shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 25px rgba(226, 183, 110, 0.15);
+  
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 8px;
+  --anim-fast: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --anim-mid: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+  --anim-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @theme inline {
@@ -20,14 +38,21 @@
 }
 
 body {
-  background: radial-gradient(1200px 600px at 10% -10%, #efe2d2 0%, transparent 60%),
-    radial-gradient(900px 500px at 110% 10%, #e1efe8 0%, transparent 55%),
+  background:
+    linear-gradient(rgba(3, 8, 17, 0.82), rgba(7, 18, 36, 0.88)),
+    radial-gradient(1200px 800px at 20% -10%, rgba(226, 183, 110, 0.18) 0%, transparent 65%),
+    radial-gradient(1000px 700px at 100% 10%, rgba(52, 179, 209, 0.15) 0%, transparent 60%),
+    url("/background.png"),
     linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  background-position: center, 20% -10%, 100% 10%, center, center;
+  background-size: cover, auto, auto, cover, cover;
+  background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
   background-attachment: fixed;
   color: var(--ink);
-  font-family: "Sakkal Majalla", var(--font-body), system-ui, -apple-system, sans-serif;
+  font-family: "Poppins", "Tajawal", "Sakkal Majalla", var(--font-body), system-ui, -apple-system, sans-serif;
   font-weight: 600;
-  font-size: 18px;
+  font-size: clamp(14px, 0.25vw + 13px, 16px);
+  line-height: 1.45;
   min-height: 100vh;
   direction: rtl;
 }
@@ -39,8 +64,9 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
 
 .app-heading {
   font-family: "Tajawal", var(--font-heading), system-ui, -apple-system, sans-serif;
-  color: #ffffff;
-  font-size: 1.875rem;
+  color: #f8fbff;
+  text-shadow: 0 2px 20px rgba(2, 7, 14, 0.5);
+  font-size: clamp(1.4rem, 1vw + 1rem, 1.7rem);
   font-weight: 400;
 }
 
@@ -79,7 +105,7 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
   display: block;
   width: 22px;
   height: 22px;
-  background-image: url("/arrow_back_ios_24dp_FFFFFF_FILL0_wght400_GRAD0_opsz24.png");
+  background-image: url("/arrow_back_ios_new_70dp_FFFFFF_FILL0_wght400_GRAD0_opsz48.png");
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -113,6 +139,104 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
   box-shadow: none !important;
 }
 
+.leaderboard-top-wrap {
+  position: relative;
+  overflow: visible;
+  padding-top: 32px;
+}
+
+.leaderboard-top {
+  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.leaderboard-top-center {
+  transform: translateY(-18px) scale(1.08);
+  z-index: 2;
+}
+
+.leaderboard-top-1 {
+  border-color: rgba(255, 215, 120, 0.7);
+  background: linear-gradient(135deg, rgba(255, 214, 102, 0.25), rgba(255, 238, 196, 0.15));
+  position: relative;
+  overflow: hidden;
+}
+
+.leaderboard-top > * {
+  position: relative;
+  z-index: 1;
+}
+
+.leaderboard-sparkles {
+  position: absolute;
+  inset: -25%;
+  width: 150%;
+  height: 150%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+  background:
+    radial-gradient(8px 8px at 12% 18%, rgba(255,255,255,0.9) 0 2px, transparent 5px),
+    radial-gradient(10px 10px at 26% 36%, rgba(255,255,255,0.8) 0 2px, transparent 6px),
+    radial-gradient(7px 7px at 42% 22%, rgba(255,255,255,0.85) 0 2px, transparent 5px),
+    radial-gradient(9px 9px at 58% 16%, rgba(255,255,255,0.8) 0 2px, transparent 6px),
+    radial-gradient(7px 7px at 74% 32%, rgba(255,255,255,0.75) 0 2px, transparent 5px),
+    radial-gradient(9px 9px at 18% 64%, rgba(255,255,255,0.85) 0 2px, transparent 6px),
+    radial-gradient(7px 7px at 36% 78%, rgba(255,255,255,0.75) 0 2px, transparent 5px),
+    radial-gradient(8px 8px at 58% 70%, rgba(255,255,255,0.7) 0 2px, transparent 6px),
+    radial-gradient(10px 10px at 82% 66%, rgba(255,255,255,0.85) 0 2px, transparent 6px),
+    radial-gradient(8px 8px at 70% 52%, rgba(255,255,255,0.7) 0 2px, transparent 5px);
+  animation: leaderboard-sparkles 3.6s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+.leaderboard-sparkles::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(6px 6px at 22% 26%, rgba(255,255,255,0.6) 0 2px, transparent 5px),
+    radial-gradient(8px 8px at 48% 12%, rgba(255,255,255,0.65) 0 2px, transparent 6px),
+    radial-gradient(6px 6px at 64% 44%, rgba(255,255,255,0.55) 0 2px, transparent 5px),
+    radial-gradient(7px 7px at 30% 52%, rgba(255,255,255,0.6) 0 2px, transparent 5px),
+    radial-gradient(8px 8px at 78% 24%, rgba(255,255,255,0.65) 0 2px, transparent 6px);
+  opacity: 0.7;
+  animation: leaderboard-sparkles 4.6s ease-in-out infinite reverse;
+}
+
+@keyframes leaderboard-sparkles {
+  0% {
+    opacity: 0.35;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0.2px);
+  }
+  45% {
+    opacity: 0.95;
+    transform: translate3d(2%, -2%, 0) scale(1.02);
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 0.45;
+    transform: translate3d(-2%, 2%, 0) scale(1);
+    filter: blur(0.4px);
+  }
+}
+
+.leaderboard-top-2 {
+  border-color: rgba(210, 210, 210, 0.7);
+  background: linear-gradient(135deg, rgba(220, 220, 220, 0.25), rgba(255, 255, 255, 0.1));
+}
+
+.leaderboard-top-3 {
+  border-color: rgba(205, 127, 50, 0.7);
+  background: linear-gradient(135deg, rgba(205, 127, 50, 0.25), rgba(255, 228, 196, 0.1));
+}
+
+
 * {
   box-sizing: border-box;
 }
@@ -120,28 +244,27 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
 .site-shell {
   position: relative;
   min-height: 100vh;
-}
-
-.site-bg {
-  position: fixed;
-  inset: 0;
-  background-image: url("/background.png");
-  background-size: cover;
-  background-position: center;
-  z-index: 0;
-}
-
-.site-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 1;
+  background:
+    radial-gradient(1000px 500px at 50% 0%, rgba(226, 183, 110, 0.15) 0%, transparent 68%),
+    linear-gradient(180deg, rgba(3, 8, 17, 0.7) 0%, rgba(2, 5, 12, 0.5) 100%);
 }
 
 .site-content {
   position: relative;
-  z-index: 2;
   min-height: 100vh;
+  animation: pageFadeIn 220ms ease-in-out;
+  padding-inline: clamp(10px, 2vw, 24px);
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes menuFadeIn {
@@ -185,19 +308,398 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
 }
 
 .menu-backdrop-anim {
-  animation: menuFadeIn 180ms ease-out;
+  animation: menuFadeIn var(--anim-mid);
 }
 
 .menu-panel-anim {
-  animation: menuSlideInRight 220ms ease-out;
+  animation: menuSlideInRight var(--anim-mid);
 }
 
 .menu-backdrop-out-anim {
-  animation: menuFadeOut 180ms ease-out forwards;
+  animation: menuFadeOut var(--anim-mid) forwards;
 }
 
 .menu-panel-out-anim {
-  animation: menuSlideOutRight 220ms ease-out forwards;
+  animation: menuSlideOutRight var(--anim-mid) forwards;
+}
+
+/* Modernize existing cards/buttons/inputs without changing layout */
+.site-content :is(input, select, textarea) {
+  border-radius: var(--radius-md);
+  transition:
+    box-shadow var(--anim-fast),
+    border-color var(--anim-fast),
+    background-color var(--anim-fast);
+  background-color: rgba(6, 15, 30, 0.6) !important;
+  border: 1px solid rgba(226, 183, 110, 0.25) !important;
+  backdrop-filter: blur(8px);
+}
+
+.site-content :is(input, select, textarea):focus {
+  outline: none;
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--ring), 0 0 15px rgba(226, 183, 110, 0.15);
+  background-color: rgba(9, 20, 38, 0.8) !important;
+}
+
+.site-content :is(button, a.btn) {
+  transition:
+    transform var(--anim-bounce),
+    box-shadow var(--anim-fast),
+    background-color var(--anim-fast),
+    border-color var(--anim-fast),
+    color var(--anim-fast);
+}
+
+.site-content :is(button:not(.back-btn):not(.menu-trigger), a.btn, a[class*="bg-[#112b50]"]):hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 25px -5px rgba(226, 183, 110, 0.25);
+  filter: brightness(1.1);
+}
+
+.site-content :is(button:not(.back-btn):not(.menu-trigger), a.btn):active {
+  transform: translateY(1px) scale(0.98);
+}
+
+/* Common glass cards used across pages */
+.site-content [class*="rounded-3xl"][class*="backdrop-blur"],
+.glass-panel {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--glass-border) !important;
+  background: linear-gradient(145deg, rgba(16, 32, 60, 0.7), rgba(9, 20, 40, 0.8)) !important;
+  box-shadow: var(--shadow), var(--shadow-glow), inset 0 1px 0 var(--glass-highlight);
+  backdrop-filter: blur(16px);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle shine effect on glass cards */
+.site-content [class*="rounded-3xl"][class*="backdrop-blur"]::before,
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.05), transparent);
+  transform: skewX(-20deg);
+  animation: shine 8s infinite;
+  pointer-events: none;
+}
+
+@keyframes shine {
+  0% { left: -100%; }
+  20% { left: 200%; }
+  100% { left: 200%; }
+}
+
+.site-content [class*="bg-white/10"] {
+  background-color: rgba(12, 26, 48, 0.75) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 183, 110, 0.2) !important;
+}
+
+.site-content [class*="bg-white/20"] {
+  background-color: rgba(18, 36, 64, 0.85) !important;
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 183, 110, 0.3) !important;
+}
+
+.site-content [class*="border-white/30"] {
+  border-color: rgba(226, 183, 110, 0.45) !important;
+}
+
+.site-content [class*="border-black/10"] {
+  border-color: rgba(201, 166, 107, 0.24) !important;
+}
+
+.site-content [class*="text-black"] {
+  color: #eef2fb !important;
+}
+
+.site-content [class*="text-white"] {
+  color: #f6f8fd !important;
+}
+
+/* Force notifications form text to white on dark panel */
+.site-content .notif-form {
+  color: #ffffff !important;
+}
+
+.site-content .notif-form * {
+  color: #ffffff;
+}
+
+.site-content .notif-form .notif-title {
+  color: #ffffff !important;
+}
+
+.site-content .notif-form .notif-select,
+.site-content .notif-form select,
+.site-content .notif-form option {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Stronger override for target select inside notifications */
+.site-content .notif-form select.notif-select,
+.site-content .notif-form .notif-select {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* White chips/cards: navy text, except delete buttons keep red text */
+/* Only force navy text on real white buttons/chips, not translucent panels */
+.site-content .bg-white,
+.site-content .bg-white\/70,
+.site-content .bg-white\/80,
+.site-content .bg-white\/90,
+.site-content .bg-white\/95 {
+  color: #0a1d36 !important;
+}
+
+.site-content .bg-white [class*="text-white"],
+.site-content .bg-white\/70 [class*="text-white"],
+.site-content .bg-white\/80 [class*="text-white"],
+.site-content .bg-white\/90 [class*="text-white"],
+.site-content .bg-white\/95 [class*="text-white"] {
+  color: #0a1d36 !important;
+}
+
+.site-content .bg-white [class*="text-red"],
+.site-content .bg-white\/70 [class*="text-red"],
+.site-content .bg-white\/80 [class*="text-red"],
+.site-content .bg-white\/90 [class*="text-red"],
+.site-content .bg-white\/95 [class*="text-red"] {
+  color: #dc2626 !important;
+}
+
+/* Attendance page visibility fixes */
+.site-content .attendance-page,
+.site-content .attendance-page * {
+  color: #ffffff;
+}
+
+.site-content .attendance-page input,
+.site-content .attendance-page textarea,
+.site-content .attendance-page select {
+  color: #ffffff !important;
+}
+
+.site-content .attendance-page input::placeholder,
+.site-content .attendance-page textarea::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Inputs inside dark cards: white text + muted placeholder */
+.site-content input,
+.site-content textarea,
+.site-content select {
+  color: #ffffff !important;
+}
+
+.site-content input::placeholder,
+.site-content textarea::placeholder {
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Calendar page date/time picker icons + time text in white */
+.calendar-page input[type="date"],
+.calendar-page input[type="time"] {
+  color: #ffffff !important;
+}
+
+.calendar-page input[type="date"]::-webkit-calendar-picker-indicator,
+.calendar-page input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.3);
+  opacity: 1;
+}
+
+/* Ensure date/time picker icons are visible on dark UI */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(1.2);
+  opacity: 1;
+}
+
+/* Hide global menu when exam is running */
+body.exam-in-progress .menu-trigger,
+body.exam-in-progress .side-menu-panel,
+body.exam-in-progress .back-btn {
+  display: none !important;
+}
+
+/* Elegant table hover and status badges */
+.data-table tr {
+  transition: background-color var(--anim-fast);
+}
+
+.data-table tr:hover {
+  background-color: rgba(201, 166, 107, 0.1);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.status-badge.present {
+  background: rgba(16, 185, 129, 0.18);
+  color: #39e7a8;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.status-badge.absent {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ff9fa1;
+  border: 1px solid rgba(239, 68, 68, 0.55);
+}
+
+.status-badge.late {
+  background: rgba(249, 115, 22, 0.22);
+  color: #ffc18c;
+  border: 1px solid rgba(249, 115, 22, 0.55);
+}
+
+/* Loading helpers */
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 3px solid rgba(201, 166, 107, 0.25);
+  border-top-color: var(--accent);
+  animation: spin 900ms linear infinite;
+}
+
+.loading-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+}
+
+.loading-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  animation: shimmer 1.4s infinite;
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes drawLine {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes calendarMonthInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes calendarMonthInFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes calendarMonthOutToLeft {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(-22px);
+  }
+}
+
+@keyframes calendarMonthOutToRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(22px);
+  }
+}
+
+.calendar-month-in-right {
+  animation: calendarMonthInFromRight 230ms ease-in-out;
+}
+
+.calendar-month-in-left {
+  animation: calendarMonthInFromLeft 230ms ease-in-out;
+}
+
+.calendar-month-out-left {
+  animation: calendarMonthOutToLeft 230ms ease-in-out forwards;
+}
+
+.calendar-month-out-right {
+  animation: calendarMonthOutToRight 230ms ease-in-out forwards;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Subtle scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(201, 166, 107, 0.35);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(4, 10, 20, 0.32);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media (max-width: 768px) {
@@ -211,4 +713,24 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
     padding-left: 16px !important;
     padding-right: 16px !important;
   }
+}
+.leaderboard-rank-tag {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.92);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  z-index: 2;
+}
+img[data-exam-image="true"] {
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 16px;
+  display: block;
 }

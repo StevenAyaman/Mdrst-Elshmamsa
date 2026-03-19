@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -197,24 +198,22 @@ export default function ComplaintsPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">ملاحظات سلوك</h1>
-          <Link
-            href={
+          <BackButton
+            className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
+            fallbackHref={
               role === "admin"
                 ? "/portal/admin/administration"
                 : role === "notes"
                   ? "/portal/notes"
                   : `/portal/${role || "system"}`
             }
-            className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </Link>
+            />
         </header>
 
         {loading ? <p className="text-sm text-white/80">جار التحميل...</p> : null}
         {error ? <p className="text-sm text-red-200">{error}</p> : null}
 
-        {!loading && (role === "system" || role === "teacher") ? (
+        {!loading && (role === "system" || role === "teacher" || role === "admin") ? (
           <section className="mb-6 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
             <p className="text-xl font-semibold">تقديم ملاحظة سلوك</p>
             <form className="mt-4 grid gap-3" onSubmit={submitComplaint}>

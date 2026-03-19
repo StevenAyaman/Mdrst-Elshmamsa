@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AttendanceAnalyticsChart } from "@/components/admin/attendance-analytics-chart";
+import { useAttendanceAnalytics } from "@/hooks/use-attendance-analytics";
 
 type StoredUser = {
   name?: string;
@@ -20,14 +22,187 @@ type UserListItem = {
   childrenCodes: string[];
 };
 
+type ClassAttendanceMetric = {
+  classId: string;
+  attendanceRate: number;
+  absenceRate: number;
+  totalRecords: number;
+  present: number;
+  absent: number;
+};
+
+type ClassCommitmentMetric = {
+  classId: string;
+  totalScore: number;
+};
+
+type ClassInsights = {
+  period: { id: string; name: string; startDate: string; endDate: string } | null;
+  attendance: {
+    boysBestAttendance: ClassAttendanceMetric[];
+    girlsBestAttendance: ClassAttendanceMetric[];
+    boysLeastAbsence: ClassAttendanceMetric[];
+    girlsLeastAbsence: ClassAttendanceMetric[];
+  };
+  commitment: {
+    boysTop: ClassCommitmentMetric[];
+    girlsTop: ClassCommitmentMetric[];
+  };
+};
+
 const roleCards = [
   { key: "admin", label: "Admins", statsKey: "admin" as const },
   { key: "system", label: "خدام النظام", statsKey: "system" as const },
   { key: "teacher", label: "المدرسين", statsKey: "teacher" as const },
   { key: "parent", label: "أولياء الأمور", statsKey: "parent" as const },
-  { key: "notes", label: "خدام الملاحظات و الشكاوي ", statsKey: "notes" as const },
+  { key: "notes", label: "خدام الاستفسارات ", statsKey: "notes" as const },
+  { key: "katamars", label: "قطمارس", statsKey: "katamars" as const },
   { key: "student", label: "الطلاب", statsKey: "student" as const },
 ];
+
+const toShortName = (value?: string) => {
+  const parts = String(value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.slice(0, 2).join(" ") || "الخادم";
+};
+
+const AlertsSection = memo(function AlertsSection({
+  alerts,
+}: {
+  alerts: {
+    id: string;
+    title: string;
+    createdAt: string;
+    createdBy?: { name?: string };
+    audience?: { type?: "all" | "class"; classId?: string; className?: string };
+  }[];
+}) {
+  return (
+    <div className="mb-6 rounded-3xl border border-white/20 bg-white/15 p-5 text-white shadow-[var(--shadow)] backdrop-blur-md">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-white/90">آخر التنبيهات</p>
+        <Link
+          href="/portal/notifications"
+          className="rounded-full border border-white/20 px-3 py-1 text-[10px] text-white/80 transition hover:bg-white/10"
+        >
+          عرض الكل
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {alerts.length === 0 ? (
+          <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/70">
+            لا توجد تنبيهات بعد.
+          </div>
+        ) : (
+          alerts.map((item) => (
+            <Link
+              key={item.id}
+              href={`/portal/notifications/${item.id}`}
+              className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm"
+            >
+              <p className="text-white">{item.title}</p>
+              <p className="mt-1 text-[10px] text-white/70">
+                من: {item.createdBy?.name ?? "غير معروف"}
+              </p>
+              <p className="mt-1 text-[10px] text-white/70">
+                {item.audience?.type === "class"
+                  ? `إلى: ${item.audience.className ?? item.audience.classId}`
+                  : "إلى: المدرسة كلها"}
+              </p>
+            </Link>
+          ))
+        )}
+      </div>
+    </div>
+  );
+});
+
+const RoleStatsSection = memo(function RoleStatsSection({
+  stats,
+  selectedRole,
+  onSelectRole,
+  storageUsage,
+  storageError,
+  onOpenStorage,
+}: {
+  stats: {
+    admin: number;
+    system: number;
+    teacher: number;
+    parent: number;
+    notes: number;
+    katamars: number;
+    student: number;
+    classes: number;
+  };
+  selectedRole: string;
+  onSelectRole: (role: string) => void;
+  storageUsage: {
+    imageBytes: number;
+    videoBytes: number;
+    imageCount: number;
+    videoCount: number;
+  } | null;
+  storageError: string | null;
+  onOpenStorage: () => void;
+}) {
+  const totalBytes =
+    (storageUsage?.imageBytes ?? 0) + (storageUsage?.videoBytes ?? 0);
+
+  const formatBytes = (value: number) => {
+    if (!value) return "0 KB";
+    const units = ["B", "KB", "MB", "GB"];
+    let size = value;
+    let unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    return `${size.toFixed(1)} ${units[unit]}`;
+  };
+
+  return (
+    <div className="mt-6 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
+      <div className="grid grid-cols-3 gap-4">
+        {roleCards.map((roleCard) => (
+          <button
+            key={roleCard.key}
+            type="button"
+            onClick={() => onSelectRole(roleCard.key)}
+            className={`rounded-2xl border px-4 py-4 text-center transition ${
+              selectedRole === roleCard.key
+                ? "border-white/60 bg-white/25"
+                : "border-white/20 bg-white/10"
+            }`}
+          >
+            <p className="text-2xl font-semibold text-white">{stats[roleCard.statsKey]}</p>
+            <p className="mt-1 text-sm text-white/85">{roleCard.label}</p>
+          </button>
+        ))}
+        <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-4 text-center">
+          <p className="text-2xl font-semibold text-white">{stats.classes}</p>
+          <p className="mt-1 text-sm text-white/85">الفصول</p>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenStorage}
+          className="rounded-2xl border border-white/20 bg-white/10 px-4 py-4 text-center transition hover:bg-white/15"
+        >
+          <p className="text-lg font-semibold text-white">إجمالي المساحة</p>
+          {storageError ? (
+            <p className="mt-2 text-xs text-red-200">تعذر التحميل</p>
+          ) : (
+            <p className="mt-2 text-sm text-white/85">
+              {formatBytes(totalBytes)}
+            </p>
+          )}
+        </button>
+      </div>
+    </div>
+  );
+});
 
 export default function AdminHome() {
   const router = useRouter();
@@ -46,7 +221,7 @@ export default function AdminHome() {
       const stored = window.localStorage.getItem("dsms:user");
       if (!stored) return "الخادم";
       const parsed = JSON.parse(stored) as StoredUser;
-      return parsed?.name || "الخادم";
+      return toShortName(parsed?.name);
     } catch {
       return "الخادم";
     }
@@ -84,9 +259,11 @@ export default function AdminHome() {
     teacher: 0,
     parent: 0,
     notes: 0,
+    katamars: 0,
     student: 0,
     nzam: 0,
     classes: 0,
+    classInsights: null as ClassInsights | null,
   });
   const [alerts, setAlerts] = useState<
     {
@@ -106,6 +283,15 @@ export default function AdminHome() {
   const [clearingAll, setClearingAll] = useState(false);
   const [savingCode, setSavingCode] = useState<string | null>(null);
   const [studentNameByCode, setStudentNameByCode] = useState<Record<string, string>>({});
+  const [storageUsage, setStorageUsage] = useState<{
+    imageBytes: number;
+    videoBytes: number;
+    imageCount: number;
+    videoCount: number;
+  } | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [storageOpen, setStorageOpen] = useState(false);
+  const [storageClearing, setStorageClearing] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -113,7 +299,7 @@ export default function AdminHome() {
         const res = await fetch("/api/stats");
         const json = await res.json();
         if (res.ok && json.ok) {
-          setStats(json.data);
+          setStats((prev) => ({ ...prev, ...json.data }));
         }
       } catch {
         // keep defaults
@@ -121,6 +307,61 @@ export default function AdminHome() {
     }
     loadStats();
   }, []);
+
+  useEffect(() => {
+    async function loadStorageUsage() {
+      try {
+        const res = await fetch("/api/storage-usage");
+        const json = await res.json();
+        if (!res.ok || !json.ok) {
+          setStorageError(json?.message || "تعذر تحميل مساحة التخزين.");
+          return;
+        }
+        setStorageUsage(json.data);
+      } catch {
+        setStorageError("تعذر تحميل مساحة التخزين.");
+      }
+    }
+    loadStorageUsage();
+  }, []);
+
+  function formatBytes(value: number) {
+    if (!value) return "0 KB";
+    const units = ["B", "KB", "MB", "GB"];
+    let size = value;
+    let unit = 0;
+    while (size >= 1024 && unit < units.length - 1) {
+      size /= 1024;
+      unit += 1;
+    }
+    return `${size.toFixed(1)} ${units[unit]}`;
+  }
+
+  async function handleClearAllFiles() {
+    if (!storageUsage) return;
+    const ok = window.confirm("تأكيد حذف كل الملفات؟ سيتم حذف كل الوسائط المرفوعة.");
+    if (!ok) return;
+    setStorageClearing(true);
+    setStorageError(null);
+    try {
+      const res = await fetch("/api/storage-usage/clear", { method: "POST" });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setStorageError(json?.message || "تعذر حذف الملفات.");
+        return;
+      }
+      setStorageUsage({
+        imageBytes: 0,
+        videoBytes: 0,
+        imageCount: 0,
+        videoCount: 0,
+      });
+    } catch {
+      setStorageError("تعذر حذف الملفات.");
+    } finally {
+      setStorageClearing(false);
+    }
+  }
 
   useEffect(() => {
     async function loadAlerts() {
@@ -212,6 +453,29 @@ export default function AdminHome() {
       return byCode || byName || byClass || byParent || byChildren;
     });
   }, [users, searchTerm]);
+
+  const analyticsInitialRange = useMemo(
+    () => ({
+      initialStartDate: stats.classInsights?.period?.startDate ?? "",
+      initialEndDate: stats.classInsights?.period?.endDate ?? "",
+    }),
+    [stats.classInsights?.period?.startDate, stats.classInsights?.period?.endDate]
+  );
+
+  const {
+    group: analyticsGroup,
+    setGroup: setAnalyticsGroup,
+    classId: analyticsClassId,
+    setClassId: setAnalyticsClassId,
+    startDate: analyticsStartDate,
+    setStartDate: setAnalyticsStartDate,
+    endDate: analyticsEndDate,
+    setEndDate: setAnalyticsEndDate,
+    classes: analyticsClasses,
+    points: analyticsPoints,
+    loading: analyticsLoading,
+    error: analyticsError,
+  } = useAttendanceAnalytics(analyticsInitialRange);
 
   async function handleDeleteUser(targetCode: string) {
     if (!sessionUser?.studentCode || !sessionUser?.role) return;
@@ -376,73 +640,137 @@ export default function AdminHome() {
           </p>
         </header>
 
-        <div className="mb-6 rounded-3xl border border-white/20 bg-white/15 p-5 text-white shadow-[var(--shadow)] backdrop-blur-md">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-white/90">آخر التنبيهات</p>
-            <Link
-              href="/portal/notifications"
-              className="rounded-full border border-white/20 px-3 py-1 text-[10px] text-white/80 transition hover:bg-white/10"
-            >
-              عرض الكل
-            </Link>
-          </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {alerts.length === 0 ? (
-              <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/70">
-                لا توجد تنبيهات بعد.
-              </div>
-            ) : (
-              alerts.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/portal/notifications/${item.id}`}
-                  className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm"
-                >
-                  <p className="text-white">{item.title}</p>
-                  <p className="mt-1 text-[10px] text-white/70">
-                    من: {item.createdBy?.name ?? "غير معروف"}
-                  </p>
-                  <p className="mt-1 text-[10px] text-white/70">
-                    {item.audience?.type === "class"
-                      ? `إلى: ${item.audience.className ?? item.audience.classId}`
-                      : "إلى: المدرسة كلها"}
-                  </p>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
+        <AlertsSection alerts={alerts} />
 
-        <div className="rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
-          <div className="grid grid-cols-3 gap-4">
-            {roleCards.map((roleCard) => (
-              <button
-                key={roleCard.key}
-                type="button"
-                onClick={() => setSelectedRole(roleCard.key)}
-                className={`rounded-2xl border px-4 py-4 text-center transition ${
-                  selectedRole === roleCard.key
-                    ? "border-white/60 bg-white/25"
-                    : "border-white/20 bg-white/10"
-                }`}
-              >
-                <p className="text-2xl font-semibold text-white">{stats[roleCard.statsKey]}</p>
-                <p className="mt-1 text-sm text-white/85">{roleCard.label}</p>
-              </button>
-            ))}
-            <div className="rounded-2xl border border-white/20 bg-white/10 px-4 py-4 text-center">
-              <p className="text-2xl font-semibold text-white">{stats.classes}</p>
-              <p className="mt-1 text-sm text-white/85">الفصول</p>
-            </div>
-          </div>
-        </div>
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" />
 
         <section className="mt-6 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-lg font-semibold">
-              حسابات {roleCards.find((item) => item.key === selectedRole)?.label ?? ""}
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-lg font-semibold">إحصائيات الفصول</p>
+            <p className="text-xs text-white/80">
+              {stats.classInsights?.period
+                ? `${stats.classInsights.period.name || "الفترة الفعالة"}`
+                : "لا توجد فترة فعالة"}
             </p>
-            <div className="flex w-full max-w-3xl flex-wrap items-center gap-2">
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-center">
+              <p className="text-sm font-semibold text-white">الاكثر حضوراً (بنين)</p>
+              {stats.classInsights?.attendance?.boysBestAttendance?.length ? (
+                <div className="mt-3 space-y-3 text-sm text-white/90">
+                  {stats.classInsights.attendance.boysBestAttendance.map((item, idx) => (
+                    <div key={`boys-att-${item.classId}`}>
+                      <p
+                        className="font-semibold leading-tight"
+                        style={{ fontSize: idx === 0 ? "2.15rem" : "1.65rem" }}
+                      >
+                        {item.classId}
+                      </p>
+                      <p className="text-sm text-white/80">{item.attendanceRate}%</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-white/70">لا توجد بيانات حضور.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-center">
+              <p className="text-sm font-semibold text-white">الاكثر حضوراً (بنات)</p>
+              {stats.classInsights?.attendance?.girlsBestAttendance?.length ? (
+                <div className="mt-3 space-y-3 text-sm text-white/90">
+                  {stats.classInsights.attendance.girlsBestAttendance.map((item, idx) => (
+                    <div key={`girls-att-${item.classId}`}>
+                      <p
+                        className="font-semibold leading-tight"
+                        style={{ fontSize: idx === 0 ? "2.15rem" : "1.65rem" }}
+                      >
+                        {item.classId}
+                      </p>
+                      <p className="text-sm text-white/80">{item.attendanceRate}%</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-white/70">لا توجد بيانات حضور.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-center">
+              <p className="text-sm font-semibold text-white">الاكثر التزاماً (بنات)</p>
+              {stats.classInsights?.commitment?.girlsTop?.length ? (
+                <div className="mt-3 space-y-3 text-sm text-white/90">
+                  {stats.classInsights.commitment.girlsTop.map((item, idx) => (
+                    <div key={`girls-score-${item.classId}`}>
+                      <p
+                        className="font-semibold leading-tight"
+                        style={{ fontSize: idx === 0 ? "2.15rem" : "1.65rem" }}
+                      >
+                        {item.classId}
+                      </p>
+                      <p className="text-sm text-white/80">{item.totalScore}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-white/70">لا توجد بيانات التزام.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/20 bg-white/10 p-4 text-center">
+              <p className="text-sm font-semibold text-white">الاكثر التزاماً  (بنين)</p>
+              {stats.classInsights?.commitment?.boysTop?.length ? (
+                <div className="mt-3 space-y-3 text-sm text-white/90">
+                  {stats.classInsights.commitment.boysTop.map((item, idx) => (
+                    <div key={`boys-score-${item.classId}`}>
+                      <p
+                        className="font-semibold leading-tight"
+                        style={{ fontSize: idx === 0 ? "2.15rem" : "1.65rem" }}
+                      >
+                        {item.classId}
+                      </p>
+                      <p className="text-sm text-white/80">{item.totalScore}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-white/70">لا توجد بيانات التزام.</p>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <AttendanceAnalyticsChart
+          loading={analyticsLoading}
+          error={analyticsError}
+          points={analyticsPoints}
+          classes={analyticsClasses}
+          group={analyticsGroup}
+          classId={analyticsClassId}
+          startDate={analyticsStartDate}
+          endDate={analyticsEndDate}
+          periodName={stats.classInsights?.period?.name || "الفترة الفعالة"}
+          onGroupChange={setAnalyticsGroup}
+          onClassChange={setAnalyticsClassId}
+          onStartDateChange={setAnalyticsStartDate}
+          onEndDateChange={setAnalyticsEndDate}
+        />
+
+        <RoleStatsSection
+          stats={stats}
+          selectedRole={selectedRole}
+          onSelectRole={setSelectedRole}
+          storageUsage={storageUsage}
+          storageError={storageError}
+          onOpenStorage={() => setStorageOpen(true)}
+        />
+
+          <section className="mt-6 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-lg font-semibold">
+                حسابات {roleCards.find((item) => item.key === selectedRole)?.label ?? ""}
+              </p>
+              <div className="flex w-full max-w-3xl flex-wrap items-center gap-2">
               <input
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -457,11 +785,11 @@ export default function AdminHome() {
               >
                 {clearingAll ? "جار الحذف..." : "حذف الكل"}
               </button>
+              </div>
             </div>
-          </div>
 
-          {usersLoading ? <p className="mt-4 text-sm text-white/80">جار التحميل...</p> : null}
-          {usersError ? <p className="mt-4 text-sm text-red-200">{usersError}</p> : null}
+            {usersLoading ? <p className="mt-4 text-sm text-white/80">جار التحميل...</p> : null}
+            {usersError ? <p className="mt-4 text-sm text-red-200">{usersError}</p> : null}
           {!usersLoading && !usersError && filteredUsers.length === 0 ? (
             <p className="mt-4 text-sm text-white/80">لا توجد حسابات.</p>
           ) : null}
@@ -562,6 +890,51 @@ export default function AdminHome() {
         </section>
       </section>
 
+      {storageOpen ? (
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-3xl border border-white/20 bg-[#0b1d3a] p-5 text-white shadow-[var(--shadow)]">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-semibold">تفاصيل المساحة</p>
+              <button
+                type="button"
+                onClick={() => setStorageOpen(false)}
+                className="text-white/70 transition hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/15 bg-white/5 p-4 text-sm">
+              {storageError ? (
+                <p className="text-xs text-red-200">{storageError}</p>
+              ) : storageUsage ? (
+                <div className="space-y-2 text-sm text-white/85">
+                  <p>
+                    الصور: {storageUsage.imageCount} · {formatBytes(storageUsage.imageBytes)}
+                  </p>
+                  <p>
+                    الفيديوهات: {storageUsage.videoCount} · {formatBytes(storageUsage.videoBytes)}
+                  </p>
+                  <p className="text-xs text-white/60">
+                    إجمالي الوسائط: {formatBytes(
+                      storageUsage.imageBytes + storageUsage.videoBytes
+                    )}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-xs text-white/70">جارٍ حساب المساحة...</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleClearAllFiles}
+              disabled={storageClearing}
+              className="mt-4 w-full rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {storageClearing ? "جار الحذف..." : "حذف كل الملفات"}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

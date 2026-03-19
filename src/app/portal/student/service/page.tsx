@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import BackButton from "@/app/back-button";
 
 const MASS_OPTIONS = [
   "قداس الجمعة الاول",
@@ -33,6 +34,8 @@ export default function StudentServicePreferencePage() {
   const [ordainedBy, setOrdainedBy] = useState("");
   const [lastServiceDateMode, setLastServiceDateMode] = useState<"date" | "unknown">("date");
   const [lastServiceDate, setLastServiceDate] = useState("");
+  const [civilId, setCivilId] = useState("");
+  const [civilCardPhoto, setCivilCardPhoto] = useState("");
   const [requiresService, setRequiresService] = useState(true);
   const [requiresExtraFields, setRequiresExtraFields] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,6 +95,8 @@ export default function StudentServicePreferencePage() {
         }
         setRequiresService(Boolean(json.data?.requiresService ?? true));
         setRequiresExtraFields(Boolean(json.data?.requiresExtraFields ?? false));
+        setCivilId(String(json.data?.civilId ?? ""));
+        setCivilCardPhoto(String(json.data?.civilCardPhoto ?? ""));
       } catch {
         setError("تعذر تحميل البيانات.");
       } finally {
@@ -136,6 +141,19 @@ export default function StudentServicePreferencePage() {
       setError("اختر تاريخ آخر خدمة.");
       return;
     }
+    const normalizedCivilId = civilId.replace(/\D/g, "");
+    if (!normalizedCivilId) {
+      setError("اكتب الرقم المدني للشماس.");
+      return;
+    }
+    if (!/^\d{12}$/.test(normalizedCivilId)) {
+      setError("الرقم المدني لازم يكون 12 رقم.");
+      return;
+    }
+    if (!civilCardPhoto.trim()) {
+      setError("ارفع صورة المدنية (هويتي).");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -155,6 +173,8 @@ export default function StudentServicePreferencePage() {
           lastServiceDate: requiresExtraFields
             ? (lastServiceDateMode === "unknown" ? "لا اتذكر" : lastServiceDate)
             : "",
+          civilId: normalizedCivilId,
+          civilCardPhoto: civilCardPhoto.trim(),
         }),
       });
       const json = await res.json();
@@ -181,17 +201,33 @@ export default function StudentServicePreferencePage() {
     }
   }
 
+  function handleCivilCardUpload(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("من فضلك ارفع صورة فقط.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result ?? "");
+      if (!result.startsWith("data:image/")) {
+        setError("تعذر قراءة الصورة.");
+        return;
+      }
+      setCivilCardPhoto(result);
+      setError(null);
+    };
+    reader.readAsDataURL(file);
+  }
+
   return (
     <main className="min-h-screen px-6 pb-24 pt-10">
       {!isMandatoryFlow ? (
-        <button
+        <BackButton
           type="button"
-          onClick={() => router.back()}
           className="back-btn"
           aria-label="رجوع"
-        >
-          رجوع
-        </button>
+          />
       ) : null}
 
       <div className="mx-auto w-full max-w-3xl">
@@ -364,6 +400,36 @@ export default function StudentServicePreferencePage() {
                   </div>
                 </>
               ) : null}
+
+              <div className="grid gap-2">
+                <label className="text-sm text-white/90">الرقم المدني للشماس</label>
+                <input
+                  className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white"
+                  placeholder="اكتب الرقم المدني"
+                  value={civilId}
+                  onChange={(e) => setCivilId(e.target.value.replace(/\D/g, "").slice(0, 12))}
+                  inputMode="numeric"
+                  maxLength={12}
+                />
+              </div>
+
+              <div className="grid gap-2">
+                <label className="text-sm text-white/90">رفع صورة المدنية (هويتي)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple={false}
+                  className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white file:mr-3 file:rounded-full file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-black"
+                  onChange={(e) => handleCivilCardUpload(e.target.files?.[0] ?? null)}
+                />
+                {civilCardPhoto ? (
+                  <img
+                    src={civilCardPhoto}
+                    alt="صورة المدنية"
+                    className="h-28 w-44 rounded-xl border border-white/30 object-cover"
+                  />
+                ) : null}
+              </div>
 
               {error ? <p className="text-sm text-red-200">{error}</p> : null}
               {success ? <p className="text-sm text-green-200">{success}</p> : null}

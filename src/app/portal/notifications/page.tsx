@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useRouter } from "next/navigation";
 
 type StoredUser = {
@@ -107,7 +108,7 @@ export default function NotificationsPage() {
 
   async function loadNotifications(force = false) {
     try {
-      let roleParam = user?.role ?? "";
+      const roleParam = user?.role ?? "";
       let classIdParam = "";
       const userClasses = (user as { classes?: string[] })?.classes ?? [];
 
@@ -309,21 +310,18 @@ export default function NotificationsPage() {
             </p>
             <h1 className="app-heading mt-2">كل التنبيهات</h1>
           </div>
-          <button
+          <BackButton
             type="button"
-            onClick={() => router.back()}
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </button>
+          />
         </header>
 
         {canCreate ? (
           <form
             onSubmit={handleSubmit}
-            className="mb-8 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md"
+            className="notif-form mb-8 rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md"
           >
-            <p className="text-sm text-white/90">تنبيه جديد</p>
+            <p className="notif-title text-sm">تنبيه جديد</p>
             <div className="mt-4 grid gap-3">
               <input
                 className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/70"
@@ -338,7 +336,7 @@ export default function NotificationsPage() {
                 onChange={(e) => setBody(e.target.value)}
               />
               <div className="grid gap-2">
-                <label className="text-xs text-white/80">الفئة المستهدفة</label>
+                <label className="notif-title text-xs">الفئة المستهدفة</label>
                 {user?.role === "teacher" ? (
                   <div className="grid gap-2 rounded-2xl border border-white/20 bg-white/10 p-3">
                     <p className="text-xs text-white/80">اختر صف أو أكثر من صفوفك</p>
@@ -372,7 +370,8 @@ export default function NotificationsPage() {
                   </div>
                 ) : (
                   <select
-                    className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white"
+                    className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white/70"
+                    style={{ color: "rgba(255,255,255,0.6)" }}
                     value={audience.type === "class" ? audience.classId ?? "" : "__all__"}
                     onChange={(e) => {
                       const value = e.target.value;
@@ -443,7 +442,7 @@ export default function NotificationsPage() {
 
         {(user?.role === "admin" || user?.role === "system" || user?.role === "teacher" || user?.role === "notes") ? (
           <div className="mb-6 flex flex-wrap items-center justify-center gap-3">
-            <label className="text-sm text-[color:var(--muted)]">Sort</label>
+            <label className="text-sm text-[color:var(--muted)]"></label>
             <select
               className="rounded-full border border-black/10 bg-white px-4 py-2 text-sm text-[color:var(--ink)] shadow-sm"
               value={filter.type === "class" ? filter.classId ?? "" : "__all__"}
@@ -581,4 +580,3 @@ export default function NotificationsPage() {
     </main>
   );
 }
-

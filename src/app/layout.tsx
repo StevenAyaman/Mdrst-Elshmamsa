@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import Providers from "./providers";
-import TopLogoutButton from "./top-logout-button";
 import SideMenu from "./side-menu";
 import NavTracker from "./nav-tracker";
 
@@ -55,8 +54,6 @@ export default function RootLayout({
       >
         <Providers>
           <div className="site-shell">
-            <div className="site-bg" aria-hidden="true" />
-            <div className="site-overlay" aria-hidden="true" />
             <div className="site-content">
               <SideMenu />
               <NavTracker />

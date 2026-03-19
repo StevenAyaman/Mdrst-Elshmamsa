@@ -3,10 +3,34 @@ import { mapRole, normalizeValue } from "@/lib/code-mapper";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { getAdminDb } from "@/lib/firebase/admin";
 
+const loginAttempts = new Map<string, { count: number; lockedUntil: number }>();
+const LOGIN_MAX_ATTEMPTS = 6;
+const LOGIN_LOCK_MS = 10 * 60 * 1000;
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for") ?? "";
+  if (forwarded) return forwarded.split(",")[0].trim();
+  return request.headers.get("x-real-ip") ?? "unknown";
+}
+
+function getAttemptKey(code: string, ip: string) {
+  return `${code}::${ip}`;
+}
+
 export async function POST(request: Request) {
   const { code, password } = await request.json();
   const studentCode = normalizeValue(code);
   const studentPassword = normalizeValue(password).replace(/\s+/g, "");
+  const ip = getClientIp(request);
+  const attemptKey = getAttemptKey(studentCode || "unknown", ip);
+  const currentAttempt = loginAttempts.get(attemptKey);
+
+  if (currentAttempt?.lockedUntil && currentAttempt.lockedUntil > Date.now()) {
+    return NextResponse.json(
+      { ok: false, message: "تم إيقاف المحاولة مؤقتًا. حاول لاحقًا." },
+      { status: 429 }
+    );
+  }
 
   if (!studentCode || !studentPassword) {
     return NextResponse.json(
@@ -45,6 +69,12 @@ export async function POST(request: Request) {
   }
 
   if (!record) {
+    const failed = loginAttempts.get(attemptKey);
+    const nextCount = (failed?.count ?? 0) + 1;
+    loginAttempts.set(attemptKey, {
+      count: nextCount,
+      lockedUntil: nextCount >= LOGIN_MAX_ATTEMPTS ? Date.now() + LOGIN_LOCK_MS : 0,
+    });
     return NextResponse.json(
       { ok: false, message: "البيانات خاطئة." },
       { status: 401 }
@@ -71,6 +101,12 @@ export async function POST(request: Request) {
   }
 
   if (!passwordOk) {
+    const failed = loginAttempts.get(attemptKey);
+    const nextCount = (failed?.count ?? 0) + 1;
+    loginAttempts.set(attemptKey, {
+      count: nextCount,
+      lockedUntil: nextCount >= LOGIN_MAX_ATTEMPTS ? Date.now() + LOGIN_LOCK_MS : 0,
+    });
     return NextResponse.json(
       { ok: false, message: "البيانات خاطئة." },
       { status: 401 }
@@ -109,9 +145,30 @@ export async function POST(request: Request) {
   const isGirlsClass = classId.toUpperCase().endsWith("G");
   const preferredMass = String(record.preferredMass ?? "").trim();
   const preferredService = String(record.preferredService ?? "").trim();
+  const currentRank = String(record.currentRank ?? "").trim();
+  const lastServiceType = String(record.lastServiceType ?? "").trim();
+  const ordinationDate = String(record.ordinationDate ?? "").trim();
+  const ordinationChurch = String(record.ordinationChurch ?? "").trim();
+  const ordainedBy = String(record.ordainedBy ?? "").trim();
+  const lastServiceDate = String(record.lastServiceDate ?? "").trim();
+  const civilId = String(record.civilId ?? "").trim();
+  const civilCardPhoto = String(record.civilCardPhoto ?? "").trim();
+  const isBoysClass = classId.toUpperCase().endsWith("B");
   const needsServicePref =
     role === "student" &&
-    (!preferredMass || (!isGirlsClass && !preferredService));
+    (
+      !preferredMass ||
+      (!isGirlsClass && !preferredService) ||
+      (isBoysClass &&
+        (!currentRank ||
+          !lastServiceType ||
+          !ordinationDate ||
+          !ordinationChurch ||
+          !ordainedBy ||
+          !lastServiceDate)) ||
+      !/^\d{12}$/.test(civilId) ||
+      !civilCardPhoto.startsWith("data:image/")
+    );
 
   const response = NextResponse.json({
     ok: true,
@@ -124,11 +181,11 @@ export async function POST(request: Request) {
     },
   });
   const sessionPayload = Buffer.from(
-    JSON.stringify({ code: studentCode, role, mustChangePassword, needsServicePref })
+    JSON.stringify({ code: studentCode, role, mustChangePassword, needsServicePref, iat: Date.now() })
   ).toString("base64url");
   response.cookies.set("dsms_session", sessionPayload, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
@@ -140,5 +197,6 @@ export async function POST(request: Request) {
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });
+  loginAttempts.delete(attemptKey);
   return response;
 }

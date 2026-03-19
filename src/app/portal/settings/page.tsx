@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import BackButton from "@/app/back-button";
 
 type StoredUser = {
   name?: string;
@@ -20,6 +20,7 @@ export default function SettingsPage() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [profileName, setProfileName] = useState<string>("");
   const [primaryClass, setPrimaryClass] = useState<string | null>(null);
   const [childrenInfo, setChildrenInfo] = useState<
     Array<{ code: string; name: string; className: string }>
@@ -59,6 +60,22 @@ export default function SettingsPage() {
         const res = await fetch(`/api/users?code=${encodeURIComponent(storedUser.studentCode)}`);
         const json = await res.json();
         if (res.ok && json.ok) {
+          const fullName = String(json.data?.name ?? "").trim();
+          if (fullName) {
+            setProfileName(fullName);
+            try {
+              const stored = window.localStorage.getItem("dsms:user");
+              if (stored) {
+                const parsed = JSON.parse(stored) as StoredUser;
+                window.localStorage.setItem(
+                  "dsms:user",
+                  JSON.stringify({ ...parsed, name: fullName })
+                );
+              }
+            } catch {
+              // ignore
+            }
+          }
           const classes = Array.isArray(json.data?.classes) ? json.data.classes : [];
           setPrimaryClass(classes[0] ? String(classes[0]) : null);
           const subjects = Array.isArray(json.data?.subjects)
@@ -191,7 +208,7 @@ export default function SettingsPage() {
     }
   }
 
-  const displayName = storedUser?.name ?? "غير معروف";
+  const displayName = profileName || storedUser?.name || "غير معروف";
   const displayCode = storedUser?.studentCode ?? "-";
   const roleMap: Record<string, string> = {
     admin: "أدمن",
@@ -201,6 +218,7 @@ export default function SettingsPage() {
     parent: "ولي أمر",
     student: "طالب",
     notes: "ملاحظات",
+    katamars: "قطمارس",
   };
   const displayRole = roleMap[String(storedUser?.role ?? "").toLowerCase()] ?? "-";
 
@@ -209,13 +227,10 @@ export default function SettingsPage() {
       <div className="mx-auto w-full max-w-3xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">الإعدادات</h1>
-          <button
+          <BackButton
             type="button"
-            onClick={() => router.back()}
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </button>
+          />
         </header>
 
         <section className="grid gap-4">

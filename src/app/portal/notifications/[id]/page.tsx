@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useParams } from "next/navigation";
 
 type NotificationItem = {
@@ -67,12 +68,10 @@ export default function NotificationDetails() {
             </p>
             <h1 className="app-heading mt-2">تفاصيل التنبيه</h1>
           </div>
-          <Link
-            href="/portal/notifications"
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </Link>
+            fallbackHref={"/portal/notifications"}
+            />
         </header>
 
         {loading ? (

@@ -20,6 +20,13 @@ type HomeworkGradeDoc = {
   createdAt?: { toDate?: () => Date } | string;
 };
 
+type KatamarsGradeDoc = {
+  month?: string;
+  classId?: string;
+  score?: number;
+  updatedAt?: { toDate?: () => Date } | string;
+};
+
 function toIsoDate(value: unknown) {
   if (value && typeof value === "object" && "toDate" in (value as Record<string, unknown>)) {
     const maybe = value as { toDate?: () => Date };
@@ -71,21 +78,35 @@ export async function GET(
     }
 
     const db = getAdminDb();
+    let actorRole = sessionRole;
+    let actorClasses: string[] = [];
+    let actorChildrenCodes: string[] = [];
+
     if (sessionRole !== "admin") {
       const actorDoc = await db.collection("users").doc(session.code).get();
       if (!actorDoc.exists) {
         return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
       }
-      const actor = actorDoc.data() as { role?: string; classes?: string[] };
-      const actorRole = String(actor.role ?? "").trim().toLowerCase();
-      if (actorRole !== "system" && actorRole !== "teacher") {
+      const actor = actorDoc.data() as { role?: string; classes?: string[]; childrenCodes?: string[] };
+      actorRole = String(actor.role ?? "").trim().toLowerCase();
+
+      if (actorRole === "parent") {
+        actorChildrenCodes = Array.isArray(actor.childrenCodes)
+          ? actor.childrenCodes.map((value) => String(value).trim()).filter(Boolean)
+          : [];
+        if (!actorChildrenCodes.includes(studentCode)) {
+          return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+        }
+      } else if (actorRole === "system" || actorRole === "teacher") {
+        actorClasses = Array.isArray(actor.classes) ? actor.classes : [];
+        if (!actorClasses.length) {
+          return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+        }
+      } else if (actorRole === "katamars") {
+        actorClasses = [];
+      } else {
         return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
       }
-      const actorClasses = Array.isArray(actor.classes) ? actor.classes : [];
-      if (!actorClasses.length) {
-        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
-      }
-      // Access check against student class happens after student lookup.
     }
     const userDoc = await db.collection("users").doc(studentCode).get();
     if (!userDoc.exists) {
@@ -109,6 +130,8 @@ export async function GET(
       ordinationChurch?: string;
       ordainedBy?: string;
       lastServiceDate?: string;
+      civilId?: string;
+      civilCardPhoto?: string;
       profilePhoto?: string;
     };
     const userRole = String(user.role ?? "").trim().toLowerCase();
@@ -119,13 +142,17 @@ export async function GET(
       );
     }
 
-    if (sessionRole !== "admin") {
-      const actorDoc = await db.collection("users").doc(session.code).get();
-      const actor = actorDoc.data() as { classes?: string[] };
-      const actorClasses = Array.isArray(actor.classes) ? actor.classes : [];
+    if (sessionRole !== "admin" && actorRole !== "parent" && actorRole !== "katamars") {
       const studentClasses = Array.isArray(user.classes) ? user.classes : [];
       const shared = studentClasses.find((c) => actorClasses.includes(c));
       if (!shared) {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+    }
+
+    if (sessionRole !== "admin" && actorRole === "parent") {
+      const linked = actorChildrenCodes.includes(studentCode);
+      if (!linked) {
         return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
       }
     }
@@ -171,6 +198,24 @@ export async function GET(
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
+    const katamarsSnap = await db
+      .collection("katamars_competition_scores")
+      .where("studentCode", "==", studentCode)
+      .limit(50)
+      .get();
+    const katamarsGrades = katamarsSnap.docs
+      .map((doc) => {
+        const item = doc.data() as KatamarsGradeDoc;
+        return {
+          id: doc.id,
+          month: String(item.month ?? ""),
+          classId: String(item.classId ?? ""),
+          score: Number(item.score ?? 0),
+          updatedAt: toIsoDate(item.updatedAt),
+        };
+      })
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
     return NextResponse.json({
       ok: true,
       data: {
@@ -186,6 +231,8 @@ export async function GET(
         ordinationChurch: String(user.ordinationChurch ?? ""),
         ordainedBy: String(user.ordainedBy ?? ""),
         lastServiceDate: String(user.lastServiceDate ?? ""),
+        civilId: String(user.civilId ?? ""),
+        civilCardPhoto: String(user.civilCardPhoto ?? ""),
         profilePhoto: String(user.profilePhoto ?? ""),
         attendance: {
           present,
@@ -193,6 +240,7 @@ export async function GET(
           absentDays,
         },
         grades: homeworkGrades,
+        katamarsGrades,
       },
     });
   } catch (error) {
@@ -201,5 +249,70 @@ export async function GET(
       { ok: false, message: "Failed to load student file." },
       { status: 500 }
     );
+  }
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ code: string }> }
+) {
+  try {
+    const session = decodeSessionFromCookie(request);
+    const sessionRole = session?.role === "nzam" ? "system" : session?.role;
+    if (!session?.code || !sessionRole) {
+      return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+    }
+
+    const { code } = await params;
+    const studentCode = String(code ?? "").trim();
+    if (!studentCode) {
+      return NextResponse.json({ ok: false, message: "Missing code." }, { status: 400 });
+    }
+
+    const body = (await request.json()) as { profilePhoto?: string };
+    const profilePhoto = String(body.profilePhoto ?? "").trim();
+    if (!profilePhoto.startsWith("data:image/")) {
+      return NextResponse.json({ ok: false, message: "Invalid photo." }, { status: 400 });
+    }
+
+    const db = getAdminDb();
+    const studentDoc = await db.collection("users").doc(studentCode).get();
+    if (!studentDoc.exists) {
+      return NextResponse.json({ ok: false, message: "Student not found." }, { status: 404 });
+    }
+    const studentData = studentDoc.data() as { role?: string };
+    if (String(studentData.role ?? "").trim().toLowerCase() !== "student") {
+      return NextResponse.json({ ok: false, message: "User is not a student." }, { status: 400 });
+    }
+
+    if (sessionRole !== "admin") {
+      if (sessionRole !== "parent") {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+      const actorDoc = await db.collection("users").doc(session.code).get();
+      if (!actorDoc.exists) {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+      const actor = actorDoc.data() as { childrenCodes?: string[]; role?: string };
+      if (String(actor.role ?? "").trim().toLowerCase() !== "parent") {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+      const children = Array.isArray(actor.childrenCodes)
+        ? actor.childrenCodes.map((v) => String(v).trim())
+        : [];
+      if (!children.includes(studentCode)) {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+    }
+
+    await db.collection("users").doc(studentCode).update({
+      profilePhoto,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ ok: true, data: { profilePhoto } });
+  } catch (error) {
+    console.error("PATCH /api/students/[code] error:", error);
+    return NextResponse.json({ ok: false, message: "Failed to update student." }, { status: 500 });
   }
 }

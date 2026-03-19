@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { useParams, useRouter } from "next/navigation";
 
@@ -98,12 +99,10 @@ export default function TeacherClassDetailsPage() {
         <header className="mb-6 grid gap-3">
           <h1 className="app-heading mt-2 text-center">الفصل {classId}</h1>
           <div className="flex justify-end">
-            <Link
-              href="/portal/teacher"
+            <BackButton
               className="back-btn ml-0 rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-            >
-              رجوع
-            </Link>
+              fallbackHref={"/portal/teacher"}
+            />
           </div>
         </header>
 

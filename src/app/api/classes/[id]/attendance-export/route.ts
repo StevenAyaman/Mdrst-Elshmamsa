@@ -92,8 +92,8 @@ export async function GET(
     const classId = String(id ?? "").trim();
     const url = new URL(request.url);
     const periodId = String(url.searchParams.get("periodId") ?? "").trim();
-    if (!classId || !periodId) {
-      return NextResponse.json({ ok: false, message: "Missing class or period." }, { status: 400 });
+    if (!classId) {
+      return NextResponse.json({ ok: false, message: "Missing class." }, { status: 400 });
     }
     if (!actorCode || !role) {
       return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
@@ -106,14 +106,49 @@ export async function GET(
     }
 
     const db = getAdminDb();
-    const periodDoc = await db.collection("service_periods").doc(periodId).get();
-    if (!periodDoc.exists) {
-      return NextResponse.json({ ok: false, message: "الفترة غير موجودة." }, { status: 404 });
+    let periodDoc: FirebaseFirestore.DocumentSnapshot;
+    if (periodId) {
+      periodDoc = await db.collection("service_periods").doc(periodId).get();
+      if (!periodDoc.exists) {
+        return NextResponse.json({ ok: false, message: "الفترة غير موجودة." }, { status: 404 });
+      }
+    } else {
+      const activeSnap = await db
+        .collection("service_periods")
+        .where("active", "==", true)
+        .limit(1)
+        .get();
+      if (activeSnap.empty) {
+        return NextResponse.json({ ok: false, message: "لا توجد فترة فعالة حالياً." }, { status: 400 });
+      }
+      periodDoc = activeSnap.docs[0];
     }
-    const period = periodDoc.data() as { name?: string; startDate?: string; endDate?: string };
-    const startDate = String(period.startDate ?? "");
-    const endDate = String(period.endDate ?? "");
+    const period = periodDoc.data() as {
+      name?: string;
+      startDate?: string;
+      endDate?: string;
+      term1Start?: string;
+      term1End?: string;
+      term2Start?: string;
+      term2End?: string;
+      term1Name?: string;
+      term2Name?: string;
+      activeTerm?: "term1" | "term2";
+    };
+    const activeTerm = period.activeTerm ?? "term1";
+    const term1Start = String(period.term1Start ?? "");
+    const term1End = String(period.term1End ?? "");
+    const term2Start = String(period.term2Start ?? "");
+    const term2End = String(period.term2End ?? "");
+    const startDate =
+      activeTerm === "term2" ? term2Start || String(period.startDate ?? "") : term1Start || String(period.startDate ?? "");
+    const endDate =
+      activeTerm === "term2" ? term2End || String(period.endDate ?? "") : term1End || String(period.endDate ?? "");
     const periodName = String(period.name ?? "");
+    const termLabel =
+      activeTerm === "term2"
+        ? String(period.term2Name ?? "").trim()
+        : String(period.term1Name ?? "").trim();
     const dates = generateClassDates(startDate, endDate, classId);
     if (!dates.length) {
       return NextResponse.json({ ok: false, message: "لا توجد تواريخ حصص داخل الفترة." }, { status: 400 });
@@ -124,14 +159,18 @@ export async function GET(
       .where("role", "==", "student")
       .where("classes", "array-contains", classId)
       .get();
+    const activeStudentCodes = new Set<string>();
     const students = studentsSnapshot.docs
       .map((doc) => {
         const data = doc.data() as { code?: string; name?: string };
+        const code = String(data.code ?? doc.id).trim();
+        if (code) activeStudentCodes.add(code);
         return {
-          code: String(data.code ?? doc.id),
+          code,
           name: String(data.name ?? ""),
         };
       })
+      .filter((student) => Boolean(student.code))
       .sort((a, b) => a.name.localeCompare(b.name, "ar"));
 
     // Avoid composite-index dependency for now: load class attendance then filter by date range in code.
@@ -147,6 +186,7 @@ export async function GET(
       const date = String(item.date ?? "").trim();
       const status = String(item.status ?? "").trim().toLowerCase();
       if (!code || !date) continue;
+      if (!activeStudentCodes.has(code)) continue;
       if (date < startDate || date > endDate) continue;
       if (status !== "present" && status !== "absent") continue;
       statusMap.set(`${code}__${date}`, status);
@@ -281,7 +321,7 @@ export async function GET(
     const bytes = new Uint8Array(buffer as ArrayBuffer);
 
     const classCode = classId.toUpperCase();
-    const periodLabel = periodName || `${startDate} - ${endDate}`;
+    const periodLabel = termLabel || periodName || `${startDate} - ${endDate}`;
     const fileName = `حضور ${classCode} ${periodLabel}.xlsx`;
     const encodedFileName = encodeURIComponent(fileName);
     return new NextResponse(bytes, {

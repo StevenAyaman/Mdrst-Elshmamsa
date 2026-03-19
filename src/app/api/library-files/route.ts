@@ -3,6 +3,7 @@ import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { NextResponse } from "next/server";
 import { Timestamp } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 import { getAdminDb } from "@/lib/firebase/admin";
 
 export const runtime = "nodejs";
@@ -11,6 +12,13 @@ const allowedUploadRoles = new Set(["admin", "teacher"]);
 const allowedSubjects = new Set(["alhan", "katamars", "coptic", "taqs", "agbia"]);
 const allowedMimeTypes = new Set(["application/pdf", "audio/mpeg", "audio/mp3"]);
 const maxFileSizeBytes = 20 * 1024 * 1024;
+const subjectLabels: Record<string, string> = {
+  alhan: "الألحان",
+  katamars: "القطمارس",
+  coptic: "قبطي",
+  taqs: "الطقس",
+  agbia: "الأجبية",
+};
 
 type LibraryFileDoc = {
   grade: string;
@@ -51,6 +59,22 @@ function decodeSessionFromCookie(request: Request): SessionPayload {
 
 function normalizeRole(role: string) {
   return role === "nzam" ? "system" : role;
+}
+
+function splitChunks<T>(arr: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
+async function resolveClassIdsForGrade(db: ReturnType<typeof getAdminDb>, grade: string) {
+  const snapshot = await db.collection("classes").get();
+  const gradeKey = String(grade ?? "").trim().toUpperCase();
+  return snapshot.docs
+    .map((doc) => String(doc.id).trim())
+    .filter((id) => id.toUpperCase().startsWith(gradeKey));
 }
 
 function isSessionActorMatch(request: Request, actorCode: string, actorRole: string) {
@@ -232,6 +256,61 @@ export async function POST(request: Request) {
     };
 
     const ref = await db.collection("libraryFiles").add(payload);
+
+    try {
+      const classIds = await resolveClassIdsForGrade(db, grade);
+      const notifyTitle = "إضافة جديدة في المكتبة";
+      const subjectLabel = subjectLabels[subject] ?? subject;
+      const notifyBody = `${file.name} | السنة ${grade} | ${subjectLabel}`;
+      const createdAt = Timestamp.now();
+
+      if (classIds.length) {
+        await Promise.all(
+          classIds.map((classId) =>
+            db.collection("notifications").add({
+              title: notifyTitle,
+              body: notifyBody,
+              createdAt,
+              createdBy: { name: uploader.name || name, code, role },
+              audience: { type: "class", classId, className: classId },
+              data: { type: "library_file", grade, subject, classId },
+            })
+          )
+        );
+
+        for (const classChunk of splitChunks(classIds, 10)) {
+          const tokensSnapshot = await db
+            .collection("pushTokens")
+            .where("classIds", "array-contains-any", classChunk)
+            .get();
+          const tokens = tokensSnapshot.docs
+            .map((d) => (d.data() as { token?: string }).token)
+            .filter(Boolean) as string[];
+          if (tokens.length) {
+            const messaging = getMessaging();
+            for (const tokenChunk of splitChunks(tokens, 500)) {
+              await messaging.sendEachForMulticast({
+                tokens: tokenChunk,
+                notification: { title: notifyTitle, body: notifyBody },
+                data: { type: "library_file", grade, subject },
+              });
+            }
+          }
+        }
+      } else {
+        await db.collection("notifications").add({
+          title: notifyTitle,
+          body: notifyBody,
+          createdAt,
+          createdBy: { name: uploader.name || name, code, role },
+          audience: { type: "all" },
+          data: { type: "library_file", grade, subject },
+        });
+      }
+    } catch (notifyError) {
+      console.error("Library file notification failed:", notifyError);
+    }
+
     return NextResponse.json({
       ok: true,
       data: {

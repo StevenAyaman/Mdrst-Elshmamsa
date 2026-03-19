@@ -13,6 +13,14 @@ type NotificationItem = {
   audience?: { type?: "all" | "class"; classId?: string; className?: string };
 };
 
+const toShortName = (value?: string) => {
+  const parts = String(value ?? "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  return parts.slice(0, 2).join(" ") || "الخادم";
+};
+
 export default function TeacherHomePage() {
   const router = useRouter();
   const [alerts, setAlerts] = useState<NotificationItem[]>([]);
@@ -22,7 +30,7 @@ export default function TeacherHomePage() {
       const stored = window.localStorage.getItem("dsms:user");
       if (!stored) return "الخادم";
       const user = JSON.parse(stored) as StoredUser;
-      return user.name || "الخادم";
+      return toShortName(user.name);
     } catch {
       return "الخادم";
     }
@@ -102,9 +110,11 @@ export default function TeacherHomePage() {
         </div>
         <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {[
-            { href: "/portal/teacher/classes", label: "الفصول", icon: "/Class.png" },
+          { href: "/portal/teacher/classes", label: "الفصول", icon: "/Class.png" },
+          { href: "/portal/leaderboard", label: "لوحة المتصدرين", icon: "/Mosbka.png" },
+          { href: "/portal/calendar", label: "التقويم", icon: "/Calender.png" },
             { href: "/portal/homework", label: "الواجبات", icon: "/homework.png" },
-            { href: "/portal/lesson-reports", label: "تقارير الحصص", icon: "/attendance-docs.png" },
+            { href: "/portal/lesson-reports", label: "تقارير الحصص", icon: "/7dor.png" },
             { href: "/portal/attendance", label: "الحضور والغياب", icon: "/7dor.png" },
             { href: "/portal/photos", label: "الصور", icon: "/Photos1.png" },
             { href: "/portal/library", label: "المكتبة", icon: "/Mktba.png" },

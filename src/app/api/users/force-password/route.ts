@@ -71,15 +71,48 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
-    const data = snap.data() as { classes?: string[]; preferredMass?: string; preferredService?: string };
+    const data = snap.data() as {
+      classes?: string[];
+      preferredMass?: string;
+      preferredService?: string;
+      currentRank?: string;
+      lastServiceType?: string;
+      ordinationDate?: string;
+      ordinationChurch?: string;
+      ordainedBy?: string;
+      lastServiceDate?: string;
+      civilId?: string;
+      civilCardPhoto?: string;
+    };
     const classId =
       Array.isArray(data.classes) && data.classes.length ? String(data.classes[0] ?? "") : "";
     const isGirlsClass = classId.toUpperCase().endsWith("G");
+    const isBoysClass = classId.toUpperCase().endsWith("B");
     const preferredMass = String(data.preferredMass ?? "").trim();
     const preferredService = String(data.preferredService ?? "").trim();
+    const currentRank = String(data.currentRank ?? "").trim();
+    const lastServiceType = String(data.lastServiceType ?? "").trim();
+    const ordinationDate = String(data.ordinationDate ?? "").trim();
+    const ordinationChurch = String(data.ordinationChurch ?? "").trim();
+    const ordainedBy = String(data.ordainedBy ?? "").trim();
+    const lastServiceDate = String(data.lastServiceDate ?? "").trim();
+    const civilId = String(data.civilId ?? "").trim();
+    const civilCardPhoto = String(data.civilCardPhoto ?? "").trim();
     const needsServicePref =
       actorRole === "student" &&
-      (!preferredMass || (!isGirlsClass && !preferredService));
+      (
+        !preferredMass ||
+        (!isGirlsClass && !preferredService) ||
+        (isBoysClass &&
+          (!currentRank ||
+            !lastServiceType ||
+            !ordinationDate ||
+            !ordinationChurch ||
+            !ordainedBy ||
+            !lastServiceDate)) ||
+        !/^\d{12}$/.test(civilId) ||
+        !civilCardPhoto.startsWith("data:image/")
+      );
 
     const nextHash = await hashPassword(nextPassword);
     await ref.update({
@@ -90,12 +123,14 @@ export async function POST(request: Request) {
     });
 
     const response = NextResponse.json({ ok: true });
+    const normalizedRole = actorRole === "nzam" ? "system" : actorRole;
     const sessionPayload = Buffer.from(
       JSON.stringify({
         code: actorCode,
-        role: actorRole,
+        role: normalizedRole,
         mustChangePassword: false,
         needsServicePref,
+        iat: Date.now(),
       })
     ).toString("base64url");
     response.cookies.set("dsms_session", sessionPayload, {
@@ -105,7 +140,7 @@ export async function POST(request: Request) {
       path: "/",
       maxAge: 60 * 60 * 24 * 30,
     });
-    response.cookies.set("dsms_last_path", encodeURIComponent(`/portal/${actorRole}`), {
+    response.cookies.set("dsms_last_path", encodeURIComponent(`/portal/${normalizedRole}`), {
       httpOnly: false,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",

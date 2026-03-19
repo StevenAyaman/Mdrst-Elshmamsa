@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import BackButton from "@/app/back-button";
 import { useEffect, useMemo, useState } from "react";
 
 type ClassItem = { id: string; name: string };
@@ -16,11 +16,11 @@ const roleOptions = [
   { value: "teacher", label: "مدرس" },
   { value: "parent", label: "ولي أمر" },
   { value: "notes", label: "ملاحظات" },
+  { value: "katamars", label: "قطمارس" },
   { value: "student", label: "طالب" },
 ];
 
 export default function AdministrationPage() {
-  const router = useRouter();
   const [me, setMe] = useState<StoredUser | null>(null);
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [loadingClasses, setLoadingClasses] = useState(true);
@@ -63,7 +63,6 @@ export default function AdministrationPage() {
     skipped: number;
     skipDetails: string[];
   } | null>(null);
-  const [requestCount, setRequestCount] = useState(0);
   const [newClassCode, setNewClassCode] = useState("");
   const [newClassName, setNewClassName] = useState("");
   const [classCreateLoading, setClassCreateLoading] = useState(false);
@@ -102,27 +101,6 @@ export default function AdministrationPage() {
   }, []);
 
   useEffect(() => {
-    async function loadRequestCount() {
-      if (!me?.studentCode || !me?.role) return;
-      try {
-        const query = new URLSearchParams({
-          actorCode: me.studentCode,
-          actorRole: me.role,
-          status: "pending",
-        });
-        const res = await fetch(`/api/account-requests?${query.toString()}`);
-        const json = await res.json();
-        if (res.ok && json.ok) {
-          setRequestCount(Number(json.count ?? 0));
-        }
-      } catch {
-        // keep zero
-      }
-    }
-    loadRequestCount();
-  }, [me?.studentCode, me?.role]);
-
-  useEffect(() => {
     async function loadTeachers() {
       if (me?.role !== "admin" || !me?.studentCode || !me?.role) return;
       try {
@@ -159,6 +137,7 @@ export default function AdministrationPage() {
     if (role === "admin") return [];
     if (role === "parent") return [];
     if (role === "notes") return [];
+    if (role === "katamars") return [];
     if (role === "teacher") return teacherClasses;
     return singleClass ? [singleClass] : [];
   }, [role, teacherClasses, singleClass]);
@@ -172,7 +151,7 @@ export default function AdministrationPage() {
       setManualError("الاسم وكود المستخدم والباسورد المبدئي مطلوبين.");
       return;
     }
-    if (!["admin", "parent", "notes"].includes(role) && selectedClasses.length === 0) {
+    if (!["admin", "parent", "notes", "katamars"].includes(role) && selectedClasses.length === 0) {
       setManualError("اختر فصل واحد على الأقل.");
       return;
     }
@@ -466,12 +445,10 @@ export default function AdministrationPage() {
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">الإدارة</h1>
           <div className="flex items-center gap-2">
-            <Link
-              href="/portal/admin"
+            <BackButton
               className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-            >
-              رجوع
-            </Link>
+              fallbackHref={"/portal/admin"}
+            />
           </div>
         </header>
 
@@ -482,7 +459,7 @@ export default function AdministrationPage() {
         ) : (
           <div className="grid gap-6">
             <section className="rounded-3xl border border-white/20 bg-white/15 p-6 text-white shadow-[var(--shadow)] backdrop-blur-md">
-              <p className="text-xl font-semibold">إضافة حساب يدوي</p>
+              <p className="text-xl font-semibold">إضافة حساب </p>
               <form onSubmit={submitManual} className="mt-4 grid gap-3">
                 <input
                   className="rounded-2xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white"
@@ -537,12 +514,14 @@ export default function AdministrationPage() {
                   />
                 ) : null}
 
-                {role === "admin" || role === "parent" || role === "notes" ? (
+                {role === "admin" || role === "parent" || role === "notes" || role === "katamars" ? (
                   <p className="text-sm text-white/80">
                     {role === "admin"
                       ? "الأدمن بدون فصل."
                       : role === "notes"
                         ? "حساب الملاحظات بدون فصل."
+                        : role === "katamars"
+                          ? "حساب القطمارس بدون فصل."
                         : "ولي الأمر بدون فصل."}
                   </p>
                 ) : role === "teacher" ? (
@@ -853,4 +832,3 @@ export default function AdministrationPage() {
     </main>
   );
 }
-

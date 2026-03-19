@@ -52,6 +52,7 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "announcements.manage",
   ],
   notes: ["behavior.manage", "announcements.manage"],
+  katamars: ["announcements.manage"],
   parent: ["reports.view"],
   student: [],
 };

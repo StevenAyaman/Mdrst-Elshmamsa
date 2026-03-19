@@ -3,31 +3,29 @@ import Link from "next/link";
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl border border-white/20 bg-white/12 p-8 text-center text-white shadow-2xl backdrop-blur-md">
-        <div className="mx-auto mb-6 flex h-32 w-32 items-center justify-center overflow-hidden rounded-full border border-white/30 bg-white/10 shadow-lg">
+    <main className="relative flex min-h-screen items-center justify-center px-4 overflow-hidden">
+      {/* Decorative animated background elements just for the login page */}
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[color:var(--accent)]/10 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDuration: "8s" }} />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[color:var(--accent-2)]/10 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDuration: "12s" }} />
+
+      <div className="z-10 w-full max-w-md rounded-3xl glass-panel p-8 text-center text-white">
+        <div className="mx-auto mb-8 flex items-center justify-center">
           <img
-            src="/elmdrsa.jpeg"
-            alt="شعار مدرسة الشمامسة"
-            className="h-full w-full object-cover"
+            src="/COPYRIGHT.png"
+            alt="مدرسة الشمامسة"
+            className="h-28 w-auto object-contain"
           />
         </div>
-        <h1 className="font-['DecoType_Naskh_Variants'] text-3xl font-normal">
-          مدرسة الشمامسة
-        </h1>
-        <p className="mt-2 text-lg text-white/90 font-['DecoType_Naskh_Variants']">
-          كاتدرائية مارمرقس الرسول بالكويت
-        </p>
 
         <div className="mt-8">
           <LoginForm />
         </div>
-        <div className="mt-4 text-center">
+        <div className="mt-6 text-center">
           <Link
             href="/request-account"
-            className="text-sm text-white/90 underline underline-offset-4"
+            className="inline-block text-sm font-semibold text-[color:var(--accent)]/90 hover:text-[color:var(--accent-glow)] transition-all hover:drop-shadow-[0_0_8px_rgba(226,183,110,0.6)]"
           >
-            ليس لديك حساب؟
+            ليس لديك حساب؟ طلب الانضمام
           </Link>
         </div>
       </div>

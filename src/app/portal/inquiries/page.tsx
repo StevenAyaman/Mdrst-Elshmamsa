@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import BackButton from "@/app/back-button";
 
 type StoredUser = {
   name?: string;
@@ -161,7 +162,6 @@ export default function InquiriesPage() {
   useEffect(() => {
     if (!role) return;
     loadThreads();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [role]);
 
   useEffect(() => {
@@ -170,7 +170,6 @@ export default function InquiriesPage() {
       loadThreads(searchTerm);
     }, 300);
     return () => window.clearTimeout(handle);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm, role]);
 
   async function loadThreadMessages(id: string) {
@@ -303,13 +302,10 @@ export default function InquiriesPage() {
       <div className="mx-auto w-full max-w-6xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">الاستفسارات والشكاوي</h1>
-          <button
+          <BackButton
             type="button"
-            onClick={() => router.back()}
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm"
-          >
-            رجوع
-          </button>
+          />
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[320px_1fr]">

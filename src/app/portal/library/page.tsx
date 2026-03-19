@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import BackButton from "@/app/back-button";
+import { useMemo } from "react";
 
 const libraries = [
   { grade: "1", title: "مكتبة سنة أولى" },
@@ -14,17 +15,16 @@ const libraries = [
 type StoredUser = { role?: string };
 
 export default function LibraryIndexPage() {
-  const [roleHome, setRoleHome] = useState("/portal/student");
-
-  useEffect(() => {
+  const roleHome = useMemo(() => {
+    if (typeof window === "undefined") return "/portal/student";
     const stored = window.localStorage.getItem("dsms:user");
-    if (!stored) return;
+    if (!stored) return "/portal/student";
     try {
       const user = JSON.parse(stored) as StoredUser;
       const role = user?.role ? (user.role === "nzam" ? "system" : user.role) : "student";
-      setRoleHome(`/portal/${role}`);
+      return `/portal/${role}`;
     } catch {
-      setRoleHome("/portal/student");
+      return "/portal/student";
     }
   }, []);
 
@@ -33,12 +33,10 @@ export default function LibraryIndexPage() {
       <div className="mx-auto w-full max-w-5xl">
         <header className="mb-8 flex items-center justify-between">
           <h1 className="app-heading mt-2">المكتبة</h1>
-          <Link
-            href={roleHome}
+          <BackButton
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-          >
-            رجوع
-          </Link>
+            fallbackHref={roleHome}
+            />
         </header>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

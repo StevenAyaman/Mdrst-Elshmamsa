@@ -92,7 +92,13 @@ export async function GET(
       const audienceType = data.audience?.type ?? "all";
       const audienceClass = String(data.audience?.classId ?? "");
       const audienceRole = String(data.audience?.role ?? "");
+      const audienceUsers = Array.isArray(data.audience?.userCodes)
+        ? data.audience?.userCodes.map((code) => String(code).trim()).filter(Boolean)
+        : [];
       if (audienceType === "role" && audienceRole !== role) {
+        return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
+      }
+      if (audienceType === "users" && !audienceUsers.includes(session.code)) {
         return NextResponse.json({ ok: false, message: "Not allowed." }, { status: 403 });
       }
       if (audienceType === "class" && !allowedClasses.includes(audienceClass)) {
