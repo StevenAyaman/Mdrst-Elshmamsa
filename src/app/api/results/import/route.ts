@@ -150,8 +150,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, message: "Not allowed for this subject." }, { status: 403 });
     }
 
-    const termToUse =
-      access.role === "admin" && (termParam === "term1" || termParam === "term2") ? termParam : access.currentTerm;
+    const termToUse: "term1" | "term2" =
+      access.role === "admin" && (termParam === "term1" || termParam === "term2")
+        ? termParam
+        : access.currentTerm === "term2"
+          ? "term2"
+          : "term1";
     if (!isSubjectAvailableFor(access.availableSubjects, classId, subject, termToUse)) {
       return NextResponse.json({ ok: false, message: "لا يوجد درجات لهذه المادة لهذا الفصل." }, { status: 400 });
     }

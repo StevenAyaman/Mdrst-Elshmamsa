@@ -84,7 +84,12 @@ export async function GET(
       body: string;
       createdAt?: { toDate?: () => Date };
       createdBy?: { name?: string; code?: string; role?: string };
-      audience?: { type?: "all" | "class" | "role"; classId?: string; role?: string };
+      audience?: {
+        type?: "all" | "class" | "role" | "users";
+        classId?: string;
+        role?: string;
+        userCodes?: string[];
+      };
     };
 
     if (!["admin", "system", "teacher", "notes"].includes(role)) {

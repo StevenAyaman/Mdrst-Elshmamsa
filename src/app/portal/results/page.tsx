@@ -105,6 +105,7 @@ export default function ResultsPage() {
   const [copticYearLabel, setCopticYearLabel] = useState("");
 
   const [selectedChild, setSelectedChild] = useState("");
+  const [parentChildrenOptions, setParentChildrenOptions] = useState<Array<{ code: string; name: string }>>([]);
   const [parentRowsTerm1, setParentRowsTerm1] = useState<ResultRow[]>([]);
   const [parentRowsTerm2, setParentRowsTerm2] = useState<ResultRow[]>([]);
   const [parentLoading, setParentLoading] = useState(false);

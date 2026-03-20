@@ -24,6 +24,17 @@ async function getAccess(request: Request) {
   const period = await getActivePeriod();
   if (!period) return { ok: false as const, status: 400 };
 
+  const settingsSnap = await db.collection("results_settings").doc(period.id).get();
+  const settings = (settingsSnap.data() ?? {}) as ResultsSettingsDoc;
+  const currentTerm =
+    settings.currentTerm === "term2"
+      ? "term2"
+      : settings.currentTerm === "term1"
+        ? "term1"
+        : period.activeTerm === "term2"
+          ? "term2"
+          : "term1";
+
   if (role === "admin") {
     const classesSnap = await db.collection("classes").get();
     const classes = classesSnap.docs.map((d) => String(d.id).trim()).filter(Boolean);
@@ -42,16 +53,6 @@ async function getAccess(request: Request) {
 
   if (role !== "teacher") return { ok: false as const, status: 403 };
 
-  const settingsSnap = await db.collection("results_settings").doc(period.id).get();
-  const settings = (settingsSnap.data() ?? {}) as ResultsSettingsDoc;
-  const currentTerm =
-    settings.currentTerm === "term2"
-      ? "term2"
-      : settings.currentTerm === "term1"
-        ? "term1"
-        : period.activeTerm === "term2"
-          ? "term2"
-          : "term1";
   const allowed = Array.isArray(settings.allowedTeacherCodes)
     ? settings.allowedTeacherCodes.map((v) => String(v).trim()).includes(session.code)
     : false;
@@ -117,8 +118,12 @@ export async function GET(request: Request) {
     if (access.role === "teacher" && !access.subjects.includes(subject)) {
       return NextResponse.json({ ok: false, message: "Not allowed for this subject." }, { status: 403 });
     }
-    const termToUse =
-      access.role === "admin" && (termParam === "term1" || termParam === "term2") ? termParam : access.currentTerm;
+    const termToUse: "term1" | "term2" =
+      access.role === "admin" && (termParam === "term1" || termParam === "term2")
+        ? termParam
+        : access.currentTerm === "term2"
+          ? "term2"
+          : "term1";
     if (!isSubjectAvailableFor(access.availableSubjects, classId, subject, termToUse)) {
       return NextResponse.json({ ok: false, message: "لا يوجد درجات لهذه المادة لهذا الفصل." }, { status: 400 });
     }

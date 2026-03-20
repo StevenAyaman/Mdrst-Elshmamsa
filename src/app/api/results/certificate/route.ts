@@ -141,7 +141,7 @@ function classStudentLabel(classId: string) {
 
 function buildRows(
   rows: Array<ScoreDoc & { totalScore: number; notes: string }>,
-  subjectOrder: Array<{ key: string; label: string; classworkLabel?: string }>
+  subjectOrder: ReadonlyArray<{ key: string; label: string; classworkLabel?: string }>
 ): DisplayRow[] {
   const byKey = new Map<string, ScoreDoc & { totalScore: number; notes: string }>();
   for (const row of rows) {
@@ -668,7 +668,7 @@ export async function GET(request: Request) {
     }, 0);
     const scale = Array.isArray(settings?.gradeScale) ? settings?.gradeScale ?? [] : [];
     const gradeLabel = pickScaleLabel(percentage, scale);
-      const rows = buildRows(computedRows, subjectOrder as Array<{ key: string; label: string; classworkLabel?: string }>);
+      const rows = buildRows(computedRows, subjectOrder);
 
     let failedCore = false;
     for (const row of computedRows) {

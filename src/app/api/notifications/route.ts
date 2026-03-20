@@ -99,6 +99,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ ok: false, message: "User not found." }, { status: 404 });
     }
     const role = normalizeRole(String(actor.role ?? session.role ?? "").trim().toLowerCase());
+    const sessionCode = String(session.code ?? "").trim();
     const classId = String(url.searchParams.get("classId") ?? "").trim();
     const allowedClasses = await getAllowedClassesForUser(role, actor);
 
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
           const targetCodes = Array.isArray(item.audience.userCodes)
             ? item.audience.userCodes.map((code) => String(code).trim()).filter(Boolean)
             : [];
-          return targetCodes.includes(session.code);
+          return targetCodes.includes(sessionCode);
         }
         if (item.audience?.type === "all") return true;
         if (item.audience?.type === "class") {

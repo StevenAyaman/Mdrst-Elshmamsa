@@ -311,7 +311,6 @@ export default function NotificationsPage() {
             <h1 className="app-heading mt-2">كل التنبيهات</h1>
           </div>
           <BackButton
-            type="button"
             className="back-btn rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-[color:var(--ink)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
           />
         </header>

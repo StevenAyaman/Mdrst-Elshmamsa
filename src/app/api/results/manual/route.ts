@@ -140,8 +140,12 @@ export async function GET(request: Request) {
     if (!classId || !subject) {
       return NextResponse.json({ ok: false, message: "Missing class or subject." }, { status: 400 });
     }
-    const termToUse =
-      access.role === "admin" && (termParam === "term1" || termParam === "term2") ? termParam : access.currentTerm;
+    const termToUse: "term1" | "term2" =
+      access.role === "admin" && (termParam === "term1" || termParam === "term2")
+        ? termParam
+        : access.currentTerm === "term2"
+          ? "term2"
+          : "term1";
     if (!isSubjectAvailableFor(access.availableSubjects, classId, subject, termToUse)) {
       return NextResponse.json({ ok: false, message: "لا يوجد درجات لهذه المادة لهذا الفصل." }, { status: 400 });
     }
@@ -222,8 +226,12 @@ export async function POST(request: Request) {
     if (!body.classId || !body.subject || !body.studentCode || Number.isNaN(body.classworkScore) || Number.isNaN(body.examScore)) {
       return NextResponse.json({ ok: false, message: "بيانات غير مكتملة." }, { status: 400 });
     }
-    const termToUse =
-      access.role === "admin" && (body.term === "term1" || body.term === "term2") ? body.term : access.currentTerm;
+    const termToUse: "term1" | "term2" =
+      access.role === "admin" && (body.term === "term1" || body.term === "term2")
+        ? body.term
+        : access.currentTerm === "term2"
+          ? "term2"
+          : "term1";
     if (access.role === "teacher") {
       if (!access.classes.includes(body.classId)) {
         return NextResponse.json({ ok: false, message: "Not allowed for this class." }, { status: 403 });

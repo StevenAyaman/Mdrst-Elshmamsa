@@ -224,7 +224,6 @@ export default function StudentServicePreferencePage() {
     <main className="min-h-screen px-6 pb-24 pt-10">
       {!isMandatoryFlow ? (
         <BackButton
-          type="button"
           className="back-btn"
           aria-label="رجوع"
           />
