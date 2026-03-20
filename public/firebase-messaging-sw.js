@@ -23,11 +23,37 @@ if (typeof firebase !== "undefined" && firebase.messaging) {
 
   messaging.onBackgroundMessage((payload) => {
     const title = payload?.notification?.title || "تنبيه جديد";
+    const notificationId = payload?.data?.notificationId || "";
+    const targetPath =
+      payload?.data?.link ||
+      (notificationId ? `/portal/notifications/${notificationId}` : "/portal/notifications");
     const options = {
       body: payload?.notification?.body || "",
       icon: "/elmdrsa.jpeg",
-      data: payload?.data || {},
+      data: {
+        ...(payload?.data || {}),
+        link: targetPath,
+      },
     };
     self.registration.showNotification(title, options);
   });
 }
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const link = event?.notification?.data?.link || "/portal/notifications";
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (const client of windowClients) {
+        if ("focus" in client) {
+          client.navigate(link);
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(link);
+      }
+      return undefined;
+    })
+  );
+});

@@ -302,10 +302,20 @@ export async function POST(request: Request) {
                 title: title,
                 body: content,
               },
+              webpush: {
+                headers: {
+                  Urgency: "high",
+                  TTL: "2419200",
+                },
+                fcmOptions: {
+                  link: `/portal/notifications/${ref.id}`,
+                },
+              },
               data: {
                 notificationId: ref.id,
                 audienceType,
                 classId: classId || "",
+                link: `/portal/notifications/${ref.id}`,
               },
             })
           )

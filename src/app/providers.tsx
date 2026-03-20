@@ -6,6 +6,9 @@ import { messaging } from "@/lib/firebase/client";
 
 const DEFAULT_LANG = "ar";
 const INSTALL_DISMISS_KEY = "dsms:installDismissed";
+const PUSH_DONE_KEY = "dsms:push";
+const PUSH_TOKEN_KEY = "dsms:pushToken";
+const PUSH_USER_KEY = "dsms:pushUserCode";
 
 type StoredUser = { role?: string; studentCode?: string };
 
@@ -50,7 +53,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     async function registerPush() {
       const stored = window.localStorage.getItem("dsms:user");
       if (!stored) return;
-      if (window.localStorage.getItem("dsms:push") === "done") return;
 
       if (!("Notification" in window)) return;
       if (Notification.permission === "denied") return;
@@ -85,7 +87,15 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
       if (!token) return;
       const storedUser = window.localStorage.getItem("dsms:user");
-      const userCode = storedUser ? (JSON.parse(storedUser).studentCode ?? "") : "";
+      const userCode = storedUser ? String((JSON.parse(storedUser) as { studentCode?: string }).studentCode ?? "").trim() : "";
+      if (!userCode) return;
+
+      const savedToken = window.localStorage.getItem(PUSH_TOKEN_KEY) ?? "";
+      const savedUserCode = window.localStorage.getItem(PUSH_USER_KEY) ?? "";
+      const hasRegistered = window.localStorage.getItem(PUSH_DONE_KEY) === "done";
+      const shouldRegister = !hasRegistered || savedToken !== token || savedUserCode !== userCode;
+      if (!shouldRegister) return;
+
       try {
         await fetch("/api/push/register", {
           method: "POST",
@@ -96,7 +106,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      window.localStorage.setItem("dsms:push", "done");
+      window.localStorage.setItem(PUSH_DONE_KEY, "done");
+      window.localStorage.setItem(PUSH_TOKEN_KEY, token);
+      window.localStorage.setItem(PUSH_USER_KEY, userCode);
     }
 
     registerPush();
