@@ -129,7 +129,8 @@ export async function GET(request: Request) {
   const classFilter = String(url.searchParams.get("classId") ?? "").trim();
 
   const examsSnap = await db.collection("exams").orderBy("createdAt", "desc").get();
-  const allExams = examsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+  const allExams: Array<Record<string, unknown> & { id: string; subject?: string; classId?: string }> =
+    examsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
 
   let filtered = allExams;
   if (subjectFilter) {
