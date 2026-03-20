@@ -160,12 +160,12 @@ export async function POST(
   const questionsRaw: Array<Record<string, unknown> & { id: string }> = questionsSnap.docs.map(
     (doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }),
   );
-  const randomized = shuffle(questionsRaw);
+  const randomized = shuffle(questionsRaw) as Array<Record<string, unknown> & { id: string }>;
   const questionOrder = randomized.map((q) => String(q.id));
   const optionOrder: Record<string, string[]> = {};
   const questions = randomized.map((q) => {
-    const qData = q as Record<string, unknown>;
-    const qId = String((q as { id: string }).id);
+    const qData = q as Record<string, unknown> & { id: string };
+    const qId = String(qData.id);
     const type = String(qData.type ?? "mcq");
     const options = Array.isArray(qData.options)
       ? (qData.options as string[]).map((o) => String(o)).filter(Boolean)
