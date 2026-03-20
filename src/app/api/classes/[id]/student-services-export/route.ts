@@ -51,6 +51,14 @@ function parseImageDataUrl(dataUrl: string) {
   return { extension, base64: `data:image/${extension};base64,${base64}` };
 }
 
+function asCleanText(value: unknown) {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "boolean") return "";
+  const text = String(value).trim();
+  if (text.toLowerCase() === "false" || text.toLowerCase() === "true") return "";
+  return text;
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -120,22 +128,22 @@ export async function GET(
           civilCardPhoto?: string;
         };
         return {
-          "الكود": String(item.code ?? doc.id),
-          "الاسم": String(item.name ?? ""),
-          "القداس المفضل": String(item.preferredMass ?? ""),
+          "الكود": asCleanText(item.code ?? doc.id),
+          "الاسم": asCleanText(item.name ?? ""),
+          "القداس المفضل": asCleanText(item.preferredMass),
           ...(isGirlsClass
             ? {}
             : {
-                "الخدمة المفضلة": String(item.preferredService ?? ""),
-                "نوع اخر خدمة": String(item.lastServiceType ?? ""),
-                "الرتبة الحالية": String(item.currentRank ?? ""),
-                "تاريخ الرسامة/الترقية": String(item.ordinationDate ?? ""),
-                "كنيسة الرسامة": String(item.ordinationChurch ?? ""),
-                "الرسامة على يد": String(item.ordainedBy ?? ""),
-                "تاريخ اخر خدمة": String(item.lastServiceDate ?? ""),
+                "الخدمة المفضلة": asCleanText(item.preferredService),
+                "نوع اخر خدمة": asCleanText(item.lastServiceType),
+                "الرتبة الحالية": asCleanText(item.currentRank),
+                "تاريخ الرسامة/الترقية": asCleanText(item.ordinationDate),
+                "كنيسة الرسامة": asCleanText(item.ordinationChurch),
+                "الرسامة على يد": asCleanText(item.ordainedBy),
+                "تاريخ اخر خدمة": asCleanText(item.lastServiceDate),
               }),
-          "الرقم المدني": String(item.civilId ?? ""),
-          "صورة المدنية": String(item.civilCardPhoto ?? ""),
+          "الرقم المدني": asCleanText(item.civilId),
+          "صورة المدنية": asCleanText(item.civilCardPhoto),
         };
       })
       .sort((a, b) => a["الاسم"].localeCompare(b["الاسم"], "ar"));

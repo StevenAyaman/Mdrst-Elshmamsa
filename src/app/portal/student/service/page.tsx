@@ -21,6 +21,52 @@ function isRememberChoice(value: string) {
   return value === "لا اتذكر";
 }
 
+async function compressImageToDataUrl(file: File) {
+  const readDataUrl = () =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("read_failed"));
+      reader.readAsDataURL(file);
+    });
+
+  const srcDataUrl = await readDataUrl();
+  if (!srcDataUrl.startsWith("data:image/")) {
+    throw new Error("invalid_image");
+  }
+
+  const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("image_decode_failed"));
+    img.src = srcDataUrl;
+  });
+
+  const maxWidth = 1280;
+  const scale = image.width > maxWidth ? maxWidth / image.width : 1;
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("canvas_not_supported");
+  }
+  ctx.drawImage(image, 0, 0, width, height);
+
+  // Keep payload small enough for Firestore document limits.
+  let quality = 0.82;
+  let result = canvas.toDataURL("image/jpeg", quality);
+  const maxLength = 450_000;
+  while (result.length > maxLength && quality > 0.35) {
+    quality -= 0.08;
+    result = canvas.toDataURL("image/jpeg", quality);
+  }
+  return result;
+}
+
 export default function StudentServicePreferencePage() {
   const router = useRouter();
   const [isMandatoryFlow, setIsMandatoryFlow] = useState(false);
@@ -201,23 +247,23 @@ export default function StudentServicePreferencePage() {
     }
   }
 
-  function handleCivilCardUpload(file: File | null) {
+  async function handleCivilCardUpload(file: File | null) {
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setError("من فضلك ارفع صورة فقط.");
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result ?? "");
+    try {
+      const result = await compressImageToDataUrl(file);
       if (!result.startsWith("data:image/")) {
         setError("تعذر قراءة الصورة.");
         return;
       }
       setCivilCardPhoto(result);
       setError(null);
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      setError("تعذر تجهيز الصورة. حاول بصورة أوضح وأصغر حجماً.");
+    }
   }
 
   return (

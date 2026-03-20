@@ -49,6 +49,10 @@ function isValidCivilId(value: string) {
   return /^\d{12}$/.test(value);
 }
 
+function isValidCivilCardDataUrl(value: string) {
+  return /^data:image\/(png|jpe?g|webp);base64,/i.test(value);
+}
+
 export async function GET(request: Request) {
   try {
     const session = decodeSessionFromCookie(request);
@@ -167,10 +171,11 @@ export async function PATCH(request: Request) {
           !ordainedBy ||
           !lastServiceDate)) ||
       !isValidCivilId(civilId) ||
-      !civilCardPhoto.startsWith("data:image/")
+      !isValidCivilCardDataUrl(civilCardPhoto) ||
+      civilCardPhoto.length > 900_000
     ) {
       return NextResponse.json(
-        { ok: false, message: "من فضلك أكمل بيانات الخدمة المفضلة بشكل صحيح." },
+        { ok: false, message: "من فضلك أكمل بيانات الخدمة المفضلة بشكل صحيح (وصغّر صورة المدنية إذا كانت كبيرة)." },
         { status: 400 }
       );
     }
