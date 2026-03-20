@@ -112,9 +112,10 @@ async function buildStudentList(scope: ReturnType<typeof parseScope>, classNameM
         : [];
       const name = String(data.name ?? "").trim();
       const profilePhoto = String(data.profilePhoto ?? "").trim();
-      return { code, name, classes, profilePhoto };
+      const profilePhotoValue = profilePhoto ? profilePhoto : undefined;
+      return { code, name, classes, profilePhoto: profilePhotoValue };
     })
-    .filter((item): item is { code: string; name: string; classes: string[]; profilePhoto?: string } => Boolean(item));
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   const filtered = students.filter((student) => {
     if (scope.type === "school") return true;
