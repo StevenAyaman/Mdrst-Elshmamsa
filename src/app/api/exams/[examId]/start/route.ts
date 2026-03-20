@@ -157,27 +157,31 @@ export async function POST(
   }
 
   const questionsSnap = await db.collection("questions").where("examId", "==", examId).get();
-  const questionsRaw = questionsSnap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }));
+  const questionsRaw: Array<Record<string, unknown> & { id: string }> = questionsSnap.docs.map(
+    (doc) => ({ id: doc.id, ...(doc.data() as Record<string, unknown>) }),
+  );
   const randomized = shuffle(questionsRaw);
   const questionOrder = randomized.map((q) => String(q.id));
   const optionOrder: Record<string, string[]> = {};
   const questions = randomized.map((q) => {
-    const type = String(q.type ?? "mcq");
-    const options = Array.isArray(q.options)
-      ? (q.options as string[]).map((o) => String(o)).filter(Boolean)
+    const qData = q as Record<string, unknown>;
+    const qId = String((q as { id: string }).id);
+    const type = String(qData.type ?? "mcq");
+    const options = Array.isArray(qData.options)
+      ? (qData.options as string[]).map((o) => String(o)).filter(Boolean)
       : [];
-    const orderItems = Array.isArray(q.orderItems)
-      ? (q.orderItems as string[]).map((o) => String(o)).filter(Boolean)
+    const orderItems = Array.isArray(qData.orderItems)
+      ? (qData.orderItems as string[]).map((o) => String(o)).filter(Boolean)
       : [];
-    const matchOptions = Array.isArray(q.matchOptions)
-      ? (q.matchOptions as string[]).map((o) => String(o)).filter(Boolean)
+    const matchOptions = Array.isArray(qData.matchOptions)
+      ? (qData.matchOptions as string[]).map((o) => String(o)).filter(Boolean)
       : [];
     const orderedOptions = type === "mcq" ? shuffle(options) : [];
     const orderedItems = type === "order" ? shuffle(orderItems) : [];
     const orderedMatchOptions = type === "match" ? shuffle(matchOptions) : [];
-    if (type === "mcq") optionOrder[String(q.id)] = orderedOptions;
-    if (type === "order") optionOrder[String(q.id)] = orderedItems;
-    if (type === "match") optionOrder[String(q.id)] = orderedMatchOptions;
+    if (type === "mcq") optionOrder[qId] = orderedOptions;
+    if (type === "order") optionOrder[qId] = orderedItems;
+    if (type === "match") optionOrder[qId] = orderedMatchOptions;
     return {
       id: q.id,
       type,
