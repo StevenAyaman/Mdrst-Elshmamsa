@@ -92,7 +92,7 @@ export async function POST(
     return NextResponse.json({ ok: false, message: "Exam not found." }, { status: 404 });
   }
   const exam = examSnap.data() as Record<string, unknown>;
-  const classId = normalizeClassId(exam.classId ?? "");
+  const classId = normalizeClassId(String(exam.classId ?? ""));
   const startAt = String(exam.startAt ?? "").trim();
   const endAt = String(exam.endAt ?? "").trim();
 
