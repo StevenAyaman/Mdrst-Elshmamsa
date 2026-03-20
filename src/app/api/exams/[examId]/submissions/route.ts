@@ -48,10 +48,11 @@ export async function GET(
     .collection("exam_submissions")
     .where("examId", "==", examId)
     .get();
-  const submissions = submissionsSnap.docs.map((doc) => ({
-    id: doc.id,
-    ...(doc.data() as Record<string, unknown>),
-  }));
+  const submissions: Array<Record<string, unknown> & { id: string; studentCode?: string }> =
+    submissionsSnap.docs.map((doc) => ({
+      id: doc.id,
+      ...(doc.data() as Record<string, unknown>),
+    }));
 
   const studentCodes = submissions
     .map((item) => String(item.studentCode ?? ""))
