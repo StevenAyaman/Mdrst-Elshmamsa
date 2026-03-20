@@ -470,7 +470,11 @@ export async function POST(
     if (!doc.exists) {
       return NextResponse.json({ ok: false, message: "Homework not found." }, { status: 404 });
     }
-    const hw = doc.data() as { classIds?: string[]; createdBy?: { code?: string } };
+    const hw = doc.data() as {
+      classIds?: string[];
+      createdBy?: { code?: string };
+      title?: string;
+    };
     const form = await request.formData();
     const message = String(form.get("message") ?? "").trim();
     const file = form.get("file");
