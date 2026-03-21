@@ -109,9 +109,6 @@ export default function StudentHomePage() {
                 >
                   <p className="text-white">{item.title}</p>
                   <p className="mt-1 text-[10px] text-white/70">
-                    من: {item.createdBy?.name ?? "غير معروف"}
-                  </p>
-                  <p className="mt-1 text-[10px] text-white/70">
                     {item.audience?.type === "class"
                       ? `إلى: ${item.audience.className ?? item.audience.classId}`
                       : "إلى: المدرسة كلها"}
