@@ -492,12 +492,12 @@ export default function NotificationsPage() {
             items.map((item) => (
               <div
                 key={item.id}
-                className="rounded-3xl border border-black/10 bg-white/90 p-5 text-[color:var(--ink)] shadow-[var(--shadow)]"
+                className="notif-card rounded-3xl border border-black/10 bg-white/90 p-5 shadow-[var(--shadow)]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-semibold">{item.title}</p>
-                    <span className="text-xs text-[color:var(--muted)]">
+                    <p className="notif-card-title text-sm font-semibold">{item.title}</p>
+                    <span className="notif-card-meta text-xs">
                       {timeAgo(item.createdAt)}
                     </span>
                   </div>
@@ -513,19 +513,19 @@ export default function NotificationsPage() {
                   ) : null}
                 </div>
                 <Link href={`/portal/notifications/${item.id}`} className="mt-3 block">
-                  <p className="text-sm text-[color:var(--muted)] line-clamp-2">
+                  <p className="notif-card-body text-sm line-clamp-2">
                     {item.body}
                   </p>
                   {item.audience?.type === "class" ? (
-                    <p className="mt-1 text-[10px] text-[color:var(--muted)]">
+                    <p className="notif-card-meta mt-1 text-[10px]">
                       إلى: {item.audience.className ?? item.audience.classId}
                     </p>
                   ) : item.audience?.type === "role" ? (
-                    <p className="mt-1 text-[10px] text-[color:var(--muted)]">
+                    <p className="notif-card-meta mt-1 text-[10px]">
                       إلى: {item.audience.role === "notes" ? "حساب الملاحظات" : item.audience.role}
                     </p>
                   ) : (
-                    <p className="mt-1 text-[10px] text-[color:var(--muted)]">
+                    <p className="notif-card-meta mt-1 text-[10px]">
                       إلى: المدرسة كلها
                     </p>
                   )}

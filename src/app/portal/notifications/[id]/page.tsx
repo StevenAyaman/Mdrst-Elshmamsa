@@ -79,24 +79,24 @@ export default function NotificationDetails() {
         ) : !item ? (
           <p className="text-sm text-[color:var(--muted)]">التنبيه غير موجود.</p>
         ) : (
-          <div className="rounded-3xl border border-black/10 bg-white/90 p-6 shadow-[var(--shadow)]">
+          <div className="notif-card rounded-3xl border border-black/10 bg-white/90 p-6 shadow-[var(--shadow)]">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-lg font-semibold text-[color:var(--ink)]">
+              <p className="notif-card-title text-lg font-semibold">
                 {item.title}
               </p>
-              <span className="text-xs text-[color:var(--muted)]">
+              <span className="notif-card-meta text-xs">
                 {timeAgo(item.createdAt)}
               </span>
             </div>
-            <p className="mt-3 text-sm text-black whitespace-pre-wrap">
+            <p className="notif-card-body mt-3 text-sm whitespace-pre-wrap">
               {item.body}
             </p>
             {item.audience?.type === "class" ? (
-              <p className="mt-4 text-xs text-[color:var(--muted)]">
+              <p className="notif-card-meta mt-4 text-xs">
                 إلى: {item.audience.className ?? item.audience.classId}
               </p>
             ) : (
-              <p className="mt-4 text-xs text-[color:var(--muted)]">
+              <p className="notif-card-meta mt-4 text-xs">
                 إلى: المدرسة كلها
               </p>
             )}

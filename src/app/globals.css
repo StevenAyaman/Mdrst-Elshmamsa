@@ -447,6 +447,25 @@ body :where(p, span, label, input, button, textarea, select, li, a) {
   color: rgba(255, 255, 255, 0.6) !important;
 }
 
+/* Notifications cards should stay high-contrast even with global theme overrides. */
+.site-content .notif-card {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border-color: rgba(15, 23, 42, 0.14) !important;
+  color: #0f172a !important;
+}
+
+.site-content .notif-card .notif-card-title {
+  color: #0f172a !important;
+}
+
+.site-content .notif-card .notif-card-body {
+  color: #1f2a44 !important;
+}
+
+.site-content .notif-card .notif-card-meta {
+  color: #475569 !important;
+}
+
 /* White chips/cards: navy text, except delete buttons keep red text */
 /* Only force navy text on real white buttons/chips, not translucent panels */
 .site-content .bg-white,
