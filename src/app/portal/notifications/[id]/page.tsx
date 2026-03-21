@@ -88,18 +88,15 @@ export default function NotificationDetails() {
                 {timeAgo(item.createdAt)}
               </span>
             </div>
-            <p className="mt-3 text-sm text-[color:var(--muted)] whitespace-pre-wrap">
+            <p className="mt-3 text-sm text-black whitespace-pre-wrap">
               {item.body}
             </p>
-            <p className="mt-4 text-xs text-[color:var(--muted)]">
-              من: {item.createdBy?.name ?? "غير معروف"}
-            </p>
             {item.audience?.type === "class" ? (
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
+              <p className="mt-4 text-xs text-[color:var(--muted)]">
                 إلى: {item.audience.className ?? item.audience.classId}
               </p>
             ) : (
-              <p className="mt-1 text-xs text-[color:var(--muted)]">
+              <p className="mt-4 text-xs text-[color:var(--muted)]">
                 إلى: المدرسة كلها
               </p>
             )}

@@ -516,9 +516,6 @@ export default function NotificationsPage() {
                   <p className="text-sm text-[color:var(--muted)] line-clamp-2">
                     {item.body}
                   </p>
-                  <p className="mt-2 text-xs text-[color:var(--muted)]">
-                    من: {item.createdBy?.name ?? "غير معروف"}
-                  </p>
                   {item.audience?.type === "class" ? (
                     <p className="mt-1 text-[10px] text-[color:var(--muted)]">
                       إلى: {item.audience.className ?? item.audience.classId}
